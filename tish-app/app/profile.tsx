@@ -1,4 +1,4 @@
-import { COLORS } from '@/constants/theme';
+import { COLORS, LAYOUT } from '@/constants/theme';
 import { changeLanguage, LANGUAGE_LABELS, SUPPORTED_LANGUAGES, SupportedLanguage } from '@/i18n';
 import { apiRequest } from '@/utils/api';
 import { apiErrorMessage, describeApiFailure } from '@/utils/api-errors';
@@ -378,7 +378,7 @@ export default function ProfileScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <Appbar.Header elevated style={{ backgroundColor: COLORS.background }}>
-        <Appbar.BackAction onPress={() => goBackOrHome(router)} />
+        <Appbar.BackAction accessibilityLabel={t('a11y.common.goBack')} onPress={() => goBackOrHome(router)} />
         <Appbar.Content title={t('profile.title')} titleStyle={{ fontWeight: '800' }} />
         <ActiveProfileBadge />
       </Appbar.Header>
@@ -399,6 +399,7 @@ export default function ProfileScreen() {
             <Text style={{ fontSize: 12, marginBottom: 10, color: COLORS.slate }}>{t('profile.requestingAccess')}</Text>
             <TextInput
               label={t('profile.handshakeCodeLabel')}
+              accessibilityLabel={t('profile.handshakeCodeLabel')}
               placeholder={t('profile.handshakeCodePlaceholder')}
               mode="outlined"
               dense
@@ -502,6 +503,7 @@ export default function ProfileScreen() {
                 testID="profile-verify-email-code"
                 mode="outlined"
                 label={t('profile.emailVerifyCodeLabel')}
+                accessibilityLabel={t('profile.emailVerifyCodeLabel')}
                 value={verifyCode}
                 onChangeText={setVerifyCode}
                 keyboardType="number-pad"
@@ -634,7 +636,13 @@ export default function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 20, paddingBottom: 50 },
+  container: {
+    padding: 20,
+    paddingBottom: 50,
+    ...Platform.select({
+      web: { width: '100%' as const, maxWidth: LAYOUT.contentMaxWidth, alignSelf: 'center' as const },
+    }),
+  },
   header: { alignItems: 'center', marginBottom: 30 },
   username: { fontWeight: 'bold', marginTop: 10, color: COLORS.ink },
   surface: { borderRadius: 16, overflow: 'hidden', backgroundColor: 'white', marginBottom: 16 },

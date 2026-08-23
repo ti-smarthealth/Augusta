@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { Alert, Image, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { Button, Text, TextInput, useTheme } from 'react-native-paper';
 
-import { COLORS, RADIUS, SHADOWS } from '../constants/theme';
+import { COLORS, LAYOUT, RADIUS, SHADOWS } from '../constants/theme';
 import { useAuth } from '../context/AuthContext';
 
 export default function LoginScreen() {
@@ -124,7 +124,7 @@ export default function LoginScreen() {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
+    <ScrollView style={styles.page} contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
       <View style={styles.brandSection}>
         <View style={styles.logoCircle}>
           <Image 
@@ -143,6 +143,7 @@ export default function LoginScreen() {
         <TextInput
           testID="login-identifier"
           label={t('login.identifierLabel')}
+          accessibilityLabel={t('login.identifierLabel')}
           value={identifier}
           onChangeText={setIdentifier}
           mode="outlined"
@@ -151,12 +152,13 @@ export default function LoginScreen() {
           style={styles.input}
           autoCapitalize="none"
           keyboardType="email-address"
-          left={<TextInput.Icon icon="account" />}
+          left={<TextInput.Icon icon="account" aria-hidden tabIndex={-1} />}
         />
 
         <TextInput
           testID="login-password"
           label={t('login.passwordLabel')}
+          accessibilityLabel={t('login.passwordLabel')}
           value={password}
           onChangeText={setPassword}
           mode="outlined"
@@ -164,7 +166,7 @@ export default function LoginScreen() {
           activeOutlineColor={COLORS.primary}
           style={styles.input} 
           secureTextEntry 
-          left={<TextInput.Icon icon="lock" />}
+          left={<TextInput.Icon icon="lock" aria-hidden tabIndex={-1} />}
         />
 
         <Button
@@ -208,11 +210,17 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { 
-    flexGrow: 1, 
-    padding: 30, 
-    justifyContent: 'center', 
-    backgroundColor: COLORS.background 
+  // Background lives on the ScrollView itself so that on web, where the form
+  // column is clamped and centered, the gutters keep the page color.
+  page: { backgroundColor: COLORS.background },
+  container: {
+    flexGrow: 1,
+    padding: 30,
+    justifyContent: 'center',
+    backgroundColor: COLORS.background,
+    ...Platform.select({
+      web: { width: '100%' as const, maxWidth: LAYOUT.authMaxWidth, alignSelf: 'center' as const },
+    }),
   },
   brandSection: { 
     alignItems: 'center', 

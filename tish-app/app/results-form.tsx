@@ -155,7 +155,7 @@ export default function ResultsFormScreen() {
   return (
     <View style={GlobalStyles.container}>
       <Appbar.Header style={{ backgroundColor: COLORS.background }}>
-        <Appbar.BackAction onPress={() => goBackOrHome(router)} disabled={saving} />
+        <Appbar.BackAction accessibilityLabel={t('a11y.common.goBack')} onPress={() => goBackOrHome(router)} disabled={saving} />
         <Appbar.Content title={isEdit ? t('resultsForm.editTitle') : t('resultsForm.newTitle')} titleStyle={styles.headerTitle} />
         <ActiveProfileBadge />
       </Appbar.Header>
@@ -190,17 +190,25 @@ export default function ResultsFormScreen() {
                 style={webInputStyle}
               />
             ) : (
-              <Pressable onPress={() => !saving && setShowPicker(true)}>
+              <Pressable
+                onPress={() => !saving && setShowPicker(true)}
+                accessibilityRole="button"
+                accessibilityLabel={t('a11y.common.changeDate', {
+                  label: t('resultsForm.dateOfTest'),
+                  value: date.toLocaleDateString(),
+                })}
+              >
                 <View pointerEvents="none">
                     <TextInput
                         label={t('resultsForm.dateOfTest')}
+                        accessibilityLabel={t('resultsForm.dateOfTest')}
                         value={date.toLocaleDateString()}
                         mode="outlined"
                         outlineColor={COLORS.background}
                         activeOutlineColor={COLORS.primary}
                         editable={false}
                         style={styles.input}
-                        right={<TextInput.Icon icon="calendar" color={COLORS.primary} />}
+                        right={<TextInput.Icon aria-hidden tabIndex={-1} icon="calendar" color={COLORS.primary} />}
                     />
                 </View>
               </Pressable>
@@ -229,6 +237,7 @@ export default function ResultsFormScreen() {
             <View key={cfg.field_number} style={styles.fieldContainer}>
               <TextInput
                 label={`${cfg.display_name} (${cfg.units})`}
+                accessibilityLabel={`${cfg.display_name} (${cfg.units})`}
                 value={formValues[key]?.toString() || ''}
                 mode="outlined"
                 outlineColor={COLORS.background}

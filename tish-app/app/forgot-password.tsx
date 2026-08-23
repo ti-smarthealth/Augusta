@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { Alert, Platform, StyleSheet, View } from 'react-native';
 import { Button, Text, TextInput } from 'react-native-paper';
 
-import { COLORS, RADIUS, SHADOWS } from '../constants/theme';
+import { COLORS, LAYOUT, RADIUS, SHADOWS } from '../constants/theme';
 import { GlobalStyles } from '../styles/globalstyles';
 
 // Mirrors AuthDeliveryMedium from aws-amplify/auth, same as signup.tsx.
@@ -188,6 +188,7 @@ export default function ForgotPasswordScreen() {
         <TextInput
           mode="outlined"
           placeholder={t('forgotPassword.codePlaceholder')}
+          accessibilityLabel={t('forgotPassword.codePlaceholder')}
           value={code}
           onChangeText={v => { setCode(v); if (error) setError(''); }}
           keyboardType="number-pad"
@@ -198,23 +199,25 @@ export default function ForgotPasswordScreen() {
         <TextInput
           mode="outlined"
           label={t('forgotPassword.newPasswordLabel')}
+          accessibilityLabel={t('forgotPassword.newPasswordLabel')}
           value={newPassword}
           onChangeText={v => { setNewPassword(v); if (error) setError(''); }}
           secureTextEntry
           autoCapitalize="none"
           style={styles.input}
-          left={<TextInput.Icon icon="lock-reset" />}
+          left={<TextInput.Icon aria-hidden tabIndex={-1} icon="lock-reset" />}
         />
 
         <TextInput
           mode="outlined"
           label={t('forgotPassword.confirmPasswordLabel')}
+          accessibilityLabel={t('forgotPassword.confirmPasswordLabel')}
           value={confirmPassword}
           onChangeText={v => { setConfirmPassword(v); if (error) setError(''); }}
           secureTextEntry
           autoCapitalize="none"
           style={styles.input}
-          left={<TextInput.Icon icon="lock-check" />}
+          left={<TextInput.Icon aria-hidden tabIndex={-1} icon="lock-check" />}
         />
 
         {!!error && <Text style={styles.errorText}>{error}</Text>}
@@ -265,13 +268,14 @@ export default function ForgotPasswordScreen() {
       <TextInput
         mode="outlined"
         label={t('forgotPassword.identifierLabel')}
+        accessibilityLabel={t('forgotPassword.identifierLabel')}
         value={identifier}
         onChangeText={v => { setIdentifier(v); if (error) setError(''); }}
         autoCapitalize="none"
         keyboardType="email-address"
         error={!!error}
         style={styles.input}
-        left={<TextInput.Icon icon="account" />}
+        left={<TextInput.Icon aria-hidden tabIndex={-1} icon="account" />}
       />
 
       {!!error && <Text style={styles.errorText}>{error}</Text>}
@@ -299,10 +303,14 @@ export default function ForgotPasswordScreen() {
   );
 }
 
+// The container centers its children, so on web clamping each stretchy
+// element is enough to keep the form a readable column in a wide window.
+const authClamp = Platform.select({ web: { width: '100%' as const, maxWidth: LAYOUT.authMaxWidth } });
+
 const styles = StyleSheet.create({
   centeredContent: { justifyContent: 'center', alignItems: 'center', padding: 30 },
   stepTitle: { fontWeight: '800', color: COLORS.ink, marginTop: 20, textAlign: 'center' },
-  stepSubtitle: { textAlign: 'center', color: COLORS.slate, marginVertical: 10, lineHeight: 20 },
+  stepSubtitle: { textAlign: 'center', color: COLORS.slate, marginVertical: 10, lineHeight: 20, ...authClamp },
   reasonBanner: {
     textAlign: 'center',
     color: COLORS.ink,
@@ -313,9 +321,10 @@ const styles = StyleSheet.create({
     marginVertical: 14,
     lineHeight: 20,
     fontWeight: '600',
+    ...authClamp,
   },
-  spamHint: { textAlign: 'center', color: COLORS.slate, fontSize: 13, marginBottom: 16, lineHeight: 18 },
-  input: { backgroundColor: 'white', width: '100%', marginBottom: 12 },
+  spamHint: { textAlign: 'center', color: COLORS.slate, fontSize: 13, marginBottom: 16, lineHeight: 18, ...authClamp },
+  input: { backgroundColor: 'white', width: '100%', marginBottom: 12, ...authClamp },
   codeInput: {
     backgroundColor: 'white',
     width: '100%',
@@ -324,11 +333,13 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     letterSpacing: 10,
     marginBottom: 16,
+    ...authClamp,
   },
   errorText: { color: COLORS.error, textAlign: 'center', marginBottom: 12, fontWeight: '600' },
   noteText: { color: COLORS.primary, textAlign: 'center', marginBottom: 12, fontWeight: '600' },
   primaryBtn: {
     width: '100%',
+    ...authClamp,
     borderRadius: RADIUS.lg,
     height: 56,
     justifyContent: 'center',

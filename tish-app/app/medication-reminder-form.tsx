@@ -389,7 +389,7 @@ export default function MedicationReminderForm() {
     return (
         <View style={GlobalStyles.container}>
             <Appbar.Header style={{ backgroundColor: COLORS.background }}>
-                <Appbar.BackAction onPress={() => goBackOrHome(router)} disabled={isSaving} />
+                <Appbar.BackAction accessibilityLabel={t('a11y.common.goBack')} onPress={() => goBackOrHome(router)} disabled={isSaving} />
                 <Appbar.Content title={isEdit ? t('medicationReminderForm.editTitle') : t('medicationReminderForm.newTitle')} titleStyle={styles.headerTitle} />
                 <ActiveProfileBadge />
             </Appbar.Header>
@@ -431,7 +431,7 @@ export default function MedicationReminderForm() {
                                 );
                             })}
                         </View>
-                        <TextInput label={t('medicationReminderForm.customDosage')} value={customDosage} onChangeText={(val) => { setCustomDosage(val); setDosage(''); setErrors({ ...errors, dosage: false }); }} mode="outlined" style={styles.input} dense />
+                        <TextInput label={t('medicationReminderForm.customDosage')} accessibilityLabel={t('medicationReminderForm.customDosage')} value={customDosage} onChangeText={(val) => { setCustomDosage(val); setDosage(''); setErrors({ ...errors, dosage: false }); }} mode="outlined" style={styles.input} dense />
                         <HelperText type="error" visible={errors.dosage} style={styles.helper}>{t('medicationReminderForm.doseRequired')}</HelperText>
                     </View>
                 )}
@@ -480,6 +480,11 @@ export default function MedicationReminderForm() {
                                     backgroundColor: activeAlarms[i] ? COLORS.primary : 'white',
                                     borderColor: activeAlarms[i] ? COLORS.primary : COLORS.background
                                 }]}
+                                accessibilityRole="checkbox"
+                                accessibilityLabel={t('a11y.medicationReminder.enableAlarm', {
+                                    label: alarmLabels[i] || t('medications.alarmDefaultLabel', { number: i + 1 }),
+                                })}
+                                accessibilityState={{ checked: activeAlarms[i] }}
                                 onPress={() => {
                                     const next = [...activeAlarms]; next[i] = !next[i]; setActiveAlarms(next);
                                 }}>
@@ -491,6 +496,7 @@ export default function MedicationReminderForm() {
                                 onChangeText={(val) => { const n = [...alarmLabels]; n[i] = val; setAlarmLabels(n); }}
                                 editable={activeAlarms[i]}
                                 placeholder={t('medications.alarmDefaultLabel', { number: i + 1 })}
+                                accessibilityLabel={t('medications.alarmDefaultLabel', { number: i + 1 })}
                                 dense
                                 underlineColor="transparent"
                                 activeUnderlineColor={COLORS.primary}
@@ -501,7 +507,16 @@ export default function MedicationReminderForm() {
                                         onChange={(e) => { const [h, m] = e.target.value.split(':').map(Number); const d = new Date(); d.setHours(h, m, 0, 0); const n = [...alarmTimes]; n[i] = d; setAlarmTimes(n); }}
                                     />
                                 ) : (
-                                    <Pressable style={[styles.timeBtn, { opacity: activeAlarms[i] ? 1 : 0.3 }]} onPress={() => activeAlarms[i] && setShowTimePicker(i)}>
+                                    <Pressable
+                                        style={[styles.timeBtn, { opacity: activeAlarms[i] ? 1 : 0.3 }]}
+                                        onPress={() => activeAlarms[i] && setShowTimePicker(i)}
+                                        accessibilityRole="button"
+                                        accessibilityLabel={t('a11y.medicationReminder.changeAlarmTime', {
+                                            label: alarmLabels[i] || t('medications.alarmDefaultLabel', { number: i + 1 }),
+                                            time: alarmTimes[i].toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }),
+                                        })}
+                                        accessibilityState={{ disabled: !activeAlarms[i] }}
+                                    >
                                         <Text style={styles.timeText}>{alarmTimes[i].toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}</Text>
                                     </Pressable>
                                 )}
@@ -661,6 +676,7 @@ export default function MedicationReminderForm() {
                             {useCustomDelay ? (
                                 <TextInput
                                     label={t('medicationReminderForm.escalationDelayCustomLabel')}
+                                    accessibilityLabel={t('medicationReminderForm.escalationDelayCustomLabel')}
                                     value={customDelayText}
                                     onChangeText={(val) => { setCustomDelayText(val); setErrors({ ...errors, delay: false }); }}
                                     keyboardType="numeric"
@@ -730,7 +746,7 @@ export default function MedicationReminderForm() {
                 {/* 5. FREQUENCY */}
                 <View style={[styles.fieldContainer, { marginTop: 20 }]}>
                     <Text style={styles.sectionLabel}>{t('medicationReminderForm.repeatFrequency')}</Text>
-                    <TextInput label={t('medicationReminderForm.repeatEveryDays')} value={frequencyDays} onChangeText={setFrequencyDays} keyboardType="numeric" mode="outlined" style={styles.input} left={<TextInput.Icon icon="calendar-refresh" color={COLORS.primary} />} />
+                    <TextInput label={t('medicationReminderForm.repeatEveryDays')} accessibilityLabel={t('medicationReminderForm.repeatEveryDays')} value={frequencyDays} onChangeText={setFrequencyDays} keyboardType="numeric" mode="outlined" style={styles.input} left={<TextInput.Icon aria-hidden tabIndex={-1} icon="calendar-refresh" color={COLORS.primary} />} />
                     <HelperText type="info" visible={false} style={styles.helper}>{null}</HelperText>
                 </View>
 

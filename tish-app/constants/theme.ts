@@ -43,6 +43,20 @@ export const RADIUS = {
   xl: 28,
 };
 
+// Desktop web layout. Native never reads these at render time — every use is
+// behind a Platform.OS === 'web' check or the useIsDesktop hook.
+export const LAYOUT = {
+  // The centered column that page content is clamped to on web.
+  contentMaxWidth: 840,
+  // Narrower column for the auth screens, whose single card looks lost at 840.
+  authMaxWidth: 460,
+  // Width of the desktop navigation sidebar.
+  railWidth: 240,
+  // At or above this viewport width (web only), the sidebar replaces the
+  // bottom tab bar.
+  desktopMinWidth: 900,
+};
+
 export const SHADOWS = {
   soft: {
     shadowColor: '#000',

@@ -71,7 +71,7 @@ export default function ManagedUsersScreen() {
   return (
     <View style={GlobalStyles.container}>
       <Appbar.Header style={{ backgroundColor: COLORS.background }}>
-        <Appbar.BackAction onPress={() => goBackOrHome(router)} />
+        <Appbar.BackAction accessibilityLabel={t('a11y.common.goBack')} onPress={() => goBackOrHome(router)} />
         <Appbar.Content title={t('managedUsers.title')} titleStyle={{ fontWeight: '800' }} />
         <ActiveProfileBadge />
       </Appbar.Header>
@@ -80,7 +80,12 @@ export default function ManagedUsersScreen() {
         <Text style={GlobalStyles.sectionTitle}>{t('managedUsers.activeProfiles')}</Text>
 
         {/* Switch back to Self */}
-        <Pressable onPress={() => { setActiveDependent(null); router.replace('/(tabs)'); }}>
+        <Pressable
+          onPress={() => { setActiveDependent(null); router.replace('/(tabs)'); }}
+          accessibilityRole="button"
+          accessibilityLabel={t('managedUsers.yourOwnRecords')}
+          accessibilityState={{ selected: !activeDependent }}
+        >
           <Surface style={[styles.userCard, !activeDependent && styles.activeCard]} elevation={0}>
             <Avatar.Text size={40} label={t('managedUsers.selfAvatarInitials')} />
             <Text style={styles.userName}>{t('managedUsers.yourOwnRecords')}</Text>
@@ -89,7 +94,16 @@ export default function ManagedUsersScreen() {
         </Pressable>
 
         {dependents.map(dep => (
-          <Pressable key={dep.id} onPress={() => { setActiveDependent(dep); router.replace('/(tabs)'); }}>
+          <Pressable
+            key={dep.id}
+            onPress={() => { setActiveDependent(dep); router.replace('/(tabs)'); }}
+            accessibilityRole="button"
+            accessibilityLabel={t('a11y.managedUsers.switchTo', {
+              name: dep.full_name,
+              relationship: labelForType(dep.relationship_type),
+            })}
+            accessibilityState={{ selected: activeDependent?.id === dep.id }}
+          >
             <Surface style={[styles.userCard, activeDependent?.id === dep.id && styles.activeCard]} elevation={0}>
               <Avatar.Image size={40} source={{ uri: `https://api.dicebear.com/7.x/initials/svg?seed=${dep.username}` }} />
               <View style={{ flex: 1, marginLeft: 15 }}>
@@ -114,7 +128,7 @@ export default function ManagedUsersScreen() {
             {!handshakeCode ? (
               <>
                 <Text style={{ marginBottom: 15 }}>{t('managedUsers.requestDialogInstructions')}</Text>
-                <TextInput label={t('managedUsers.identifierLabel')} mode="outlined" value={searchQuery} onChangeText={setSearchQuery} autoCapitalize="none" />
+                <TextInput label={t('managedUsers.identifierLabel')} accessibilityLabel={t('managedUsers.identifierLabel')} mode="outlined" value={searchQuery} onChangeText={setSearchQuery} autoCapitalize="none" />
 
                 {/* 3.4 — how the caregiver describes the relationship.
                     Chips rather than a dropdown: seven short options, and the

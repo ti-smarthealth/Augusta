@@ -8,7 +8,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useAudioPlayer } from 'expo-audio';
 import React, { useCallback, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Modal, StyleSheet, View } from 'react-native';
+import { Modal, Platform, StyleSheet, View } from 'react-native';
 import { Button, Surface, Text } from 'react-native-paper';
 
 interface AlarmOverlayProps {
@@ -263,7 +263,9 @@ const styles = StyleSheet.create({
   medName: { color: 'white', fontWeight: '900', textAlign: 'center' },
   dosage: { color: 'rgba(255,255,255,0.6)', marginTop: 8, textAlign: 'center' },
   staleNotice: { color: 'rgba(255,255,255,0.45)', marginTop: 14, textAlign: 'center' },
-  actionGroup: { width: '100%', gap: 15 },
+  // Clamped on web: in a full-width browser window the buttons would
+  // otherwise stretch across the whole screen.
+  actionGroup: { width: '100%', gap: 15, ...Platform.select({ web: { maxWidth: 480 } }) },
   btn: { paddingVertical: 10, borderRadius: 20 },
   btnLabel: { fontSize: 18, fontWeight: '800' },
   footerText: { position: 'absolute', bottom: 40, color: 'rgba(255,255,255,0.2)', fontSize: 10, letterSpacing: 2 }

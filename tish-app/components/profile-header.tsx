@@ -1,9 +1,9 @@
 import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Pressable, StyleSheet, View } from 'react-native';
+import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import { Avatar, Divider, IconButton, Menu, Surface, Text } from 'react-native-paper';
-import { COLORS } from '../constants/theme';
+import { COLORS, LAYOUT } from '../constants/theme';
 import { useAuth } from '../context/AuthContext';
 
 interface ProfileHeaderProps {
@@ -25,7 +25,16 @@ export default function ProfileHeader({ rightActions }: ProfileHeaderProps) {
         visible={visible}
         onDismiss={() => setVisible(false)}
         anchor={
-          <Pressable onPress={() => setVisible(true)} style={styles.profileSection}>
+          <Pressable
+            onPress={() => setVisible(true)}
+            style={styles.profileSection}
+            accessibilityRole="button"
+            accessibilityLabel={t('a11y.profileHeader.switchProfile', {
+              name: displayUser?.full_name ?? '',
+              scope: isManaging ? t('common.managing') : t('common.personal'),
+            })}
+            accessibilityState={{ expanded: visible }}
+          >
             <Surface style={[styles.avatarWrapper, isManaging && styles.managingBorder]} elevation={0}>
                 <Avatar.Image 
                     size={40} 
@@ -38,7 +47,16 @@ export default function ProfileHeader({ rightActions }: ProfileHeaderProps) {
                 {displayUser?.full_name?.split(' ')[0]}
               </Text>
             </View>
-            <IconButton icon="chevron-down" size={16} style={{ margin: 0, marginLeft: -4 }} />
+            {/* Decorative: the Pressable above carries the name and the
+                expanded state, so this would only add a second, nameless
+                control to the accessibility tree. */}
+            <IconButton
+              icon="chevron-down"
+              size={16}
+              style={{ margin: 0, marginLeft: -4 }}
+              accessible={false}
+              importantForAccessibility="no"
+            />
           </Pressable>
         }
       >
@@ -77,10 +95,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingTop: 60,
+    // No status bar to clear in a browser; align with the clamped content
+    // column instead of stretching across the window. The background matches
+    // the page, so the clamp leaves no visible seam.
+    paddingTop: Platform.OS === 'web' ? 24 : 60,
     paddingHorizontal: 20,
     paddingBottom: 10,
     backgroundColor: COLORS.background,
+    ...Platform.select({
+      web: { width: '100%' as const, maxWidth: LAYOUT.contentMaxWidth, alignSelf: 'center' as const },
+    }),
   },
   profileSection: {
     flexDirection: 'row',

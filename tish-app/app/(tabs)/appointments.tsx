@@ -113,6 +113,7 @@ export default function AppointmentsScreen() {
               iconColor={COLORS.ink}
               size={26}
               onPress={() => router.push('/appointment-form')}
+              accessibilityLabel={t('a11y.appointments.add')}
             />
           </View>
         }
@@ -189,16 +190,28 @@ export default function AppointmentsScreen() {
                         iconColor={speakingId === item.id ? COLORS.primary : undefined}
                         size={18}
                         onPress={() => toggleSpeech(item.id, appointmentToSpeechText(item))}
+                        accessibilityLabel={
+                          speakingId === item.id
+                            ? t('a11y.common.stopReading')
+                            : t('a11y.appointments.readAloud', { doctor: item.doctor_name })
+                        }
                       />
                       <IconButton
                         icon="pencil-outline"
                         size={18}
                         onPress={() => router.push({ pathname: '/appointment-form', params: { appointment: JSON.stringify(item) } })}
+                        accessibilityLabel={t('a11y.appointments.edit', { doctor: item.doctor_name })}
                       />
                       <IconButton
                         icon={isExpanded ? "chevron-up" : "chevron-down"}
                         size={22}
                         onPress={() => setExpandedId(isExpanded ? null : item.id)}
+                        accessibilityLabel={
+                          isExpanded
+                            ? t('a11y.common.collapseDetails')
+                            : t('a11y.common.expandDetails')
+                        }
+                        accessibilityState={{ expanded: isExpanded }}
                       />
                     </View>
                   </View>

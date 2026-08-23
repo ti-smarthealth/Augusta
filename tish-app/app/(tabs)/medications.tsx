@@ -148,17 +148,19 @@ export default function MedicationsScreen() {
       <ProfileHeader 
         rightActions={
           <View style={{ flexDirection: 'row' }}>
-            <IconButton 
-                icon="pill-multiple" 
-                iconColor={COLORS.ink} 
-                size={26} 
-                onPress={() => router.push('/medication-library')} 
+            <IconButton
+                icon="pill-multiple"
+                iconColor={COLORS.ink}
+                size={26}
+                onPress={() => router.push('/medication-library')}
+                accessibilityLabel={t('a11y.medications.openLibrary')}
             />
-            <IconButton 
-                icon="plus-circle-outline" 
-                iconColor={COLORS.ink} 
-                size={26} 
-                onPress={() => router.push('/medication-reminder-form')} 
+            <IconButton
+                icon="plus-circle-outline"
+                iconColor={COLORS.ink}
+                size={26}
+                onPress={() => router.push('/medication-reminder-form')}
+                accessibilityLabel={t('a11y.medications.addReminder')}
             />
           </View>
         }
@@ -259,8 +261,23 @@ export default function MedicationsScreen() {
                         <Text style={styles.medSub}>{item.selected_dosage} • {t('medications.frequencyEvery', { count: item.frequency_days })}</Text>
                       </View>
                       <View style={styles.actionGroup}>
-                        <Switch value={isActive} onValueChange={() => toggleStatus(item.id, item.status)} thumbColor={isActive ? COLORS.primary : COLORS.secondary} />
-                        <IconButton icon={isExpanded ? "chevron-up" : "chevron-down"} size={22} onPress={() => setExpandedId(isExpanded ? null : item.id)} />
+                        <Switch
+                          value={isActive}
+                          onValueChange={() => toggleStatus(item.id, item.status)}
+                          thumbColor={isActive ? COLORS.primary : COLORS.secondary}
+                          accessibilityLabel={t('a11y.medications.toggleReminder', { name: item.med_name })}
+                        />
+                        <IconButton
+                          icon={isExpanded ? "chevron-up" : "chevron-down"}
+                          size={22}
+                          onPress={() => setExpandedId(isExpanded ? null : item.id)}
+                          accessibilityLabel={
+                            isExpanded
+                              ? t('a11y.common.collapseDetails')
+                              : t('a11y.common.expandDetails')
+                          }
+                          accessibilityState={{ expanded: isExpanded }}
+                        />
                       </View>
                     </View>
 

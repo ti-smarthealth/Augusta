@@ -135,6 +135,12 @@ export default function AppointmentFormScreen() {
       icon={dictatingField === fieldKey ? "microphone" : "microphone-outline"}
       color={dictatingField === fieldKey ? COLORS.primary : undefined}
       disabled={isSaving}
+      accessibilityLabel={
+        dictatingField === fieldKey
+          ? t('a11y.common.stopDictation')
+          : t('a11y.common.startDictation')
+      }
+      accessibilityState={{ selected: dictatingField === fieldKey }}
       onPress={() => dictatingField === fieldKey ? stopDictation() : startDictation(fieldKey, value, onChangeText)}
     />
   );
@@ -159,7 +165,7 @@ export default function AppointmentFormScreen() {
   return (
     <View style={GlobalStyles.container}>
       <Appbar.Header style={{ backgroundColor: COLORS.background }}>
-        <Appbar.BackAction onPress={() => goBackOrHome(router)} />
+        <Appbar.BackAction accessibilityLabel={t('a11y.common.goBack')} onPress={() => goBackOrHome(router)} />
         <Appbar.Content title={isEdit ? t('appointmentForm.editTitle') : t('appointmentForm.newTitle')} titleStyle={styles.headerTitle} />
         <ActiveProfileBadge />
       </Appbar.Header>
@@ -170,6 +176,7 @@ export default function AppointmentFormScreen() {
         <View style={styles.fieldContainer}>
             <TextInput
                 label={t('appointmentForm.doctorLabel')}
+                accessibilityLabel={t('appointmentForm.doctorLabel')}
                 value={name}
                 onChangeText={(val) => { setName(val); setErrors({...errors, name: false}); }}
                 mode="outlined"
@@ -181,15 +188,26 @@ export default function AppointmentFormScreen() {
         </View>
 
         <View style={styles.fieldContainer}>
-            <Pressable onPress={() => !isSaving && setShowPicker(true)}>
+            {/* The TextInput inside is non-editable and behind pointerEvents
+                none — this Pressable is the real control, so it carries the
+                name and the current value. */}
+            <Pressable
+                onPress={() => !isSaving && setShowPicker(true)}
+                accessibilityRole="button"
+                accessibilityLabel={t('a11y.common.changeDate', {
+                    label: t('appointmentForm.dateLabel'),
+                    value: date.toLocaleDateString(),
+                })}
+            >
                 <View pointerEvents="none">
                     <TextInput
                         label={t('appointmentForm.dateLabel')}
+                        accessibilityLabel={t('appointmentForm.dateLabel')}
                         value={date.toLocaleDateString()}
                         mode="outlined" 
                         style={styles.input} 
                         editable={false} 
-                        right={<TextInput.Icon icon="calendar" color={COLORS.primary} />} 
+                        right={<TextInput.Icon aria-hidden tabIndex={-1} icon="calendar" color={COLORS.primary} />} 
                     />
                 </View>
             </Pressable>
@@ -207,6 +225,7 @@ export default function AppointmentFormScreen() {
         <View style={styles.fieldContainer}>
             <TextInput
                 label={t('appointmentForm.reasonLabel')}
+                accessibilityLabel={t('appointmentForm.reasonLabel')}
                 value={desc}
                 onChangeText={handleDescChange}
                 mode="outlined"
@@ -225,6 +244,7 @@ export default function AppointmentFormScreen() {
         <View style={styles.fieldContainer}>
             <TextInput
                 label={t('appointmentForm.hospitalLabel')}
+                accessibilityLabel={t('appointmentForm.hospitalLabel')}
                 value={hospital}
                 onChangeText={(val) => { setHospital(val); setErrors({...errors, hospital: false}); }}
                 mode="outlined"
@@ -238,6 +258,7 @@ export default function AppointmentFormScreen() {
         <View style={styles.fieldContainer}>
             <TextInput
                 label={t('appointmentForm.departmentLabel')}
+                accessibilityLabel={t('appointmentForm.departmentLabel')}
                 value={department}
                 onChangeText={(val) => { setDepartment(val); setErrors({...errors, department: false}); }}
                 mode="outlined"
@@ -250,13 +271,14 @@ export default function AppointmentFormScreen() {
 
         {/* Row needs to be handled carefully to keep height same as single fields */}
         <View style={[styles.row, { marginBottom: 12 }]}>
-          <TextInput label={t('appointmentForm.roomLabel')} value={roomNumber} onChangeText={setRoomNumber} mode="outlined" style={[styles.input, { flex: 1, marginRight: 10 }]} disabled={isSaving} />
-          <TextInput label={t('appointmentForm.apptNumberLabel')} value={appointmentNumber} onChangeText={setAppointmentNumber} mode="outlined" style={[styles.input, { flex: 1 }]} disabled={isSaving} />
+          <TextInput label={t('appointmentForm.roomLabel')} accessibilityLabel={t('appointmentForm.roomLabel')} value={roomNumber} onChangeText={setRoomNumber} mode="outlined" style={[styles.input, { flex: 1, marginRight: 10 }]} disabled={isSaving} />
+          <TextInput label={t('appointmentForm.apptNumberLabel')} accessibilityLabel={t('appointmentForm.apptNumberLabel')} value={appointmentNumber} onChangeText={setAppointmentNumber} mode="outlined" style={[styles.input, { flex: 1 }]} disabled={isSaving} />
         </View>
 
         <View style={styles.fieldContainer}>
             <TextInput
                 label={t('appointmentForm.detailsLabel')}
+                accessibilityLabel={t('appointmentForm.detailsLabel')}
                 value={details}
                 onChangeText={setDetails}
                 mode="outlined"

@@ -96,8 +96,22 @@ export default function PlatformDatePicker({
   if (Platform.OS === 'web') {
     return (
       <Modal transparent visible animationType="fade" onRequestClose={onDismiss}>
-        <Pressable style={styles.backdrop} onPress={onDismiss}>
-          <Pressable style={styles.webSheet} onPress={() => {}}>
+        {/* Tap-outside-to-dismiss and the tap-swallower below are mouse and
+            touch affordances only. Naming them would put two phantom buttons
+            in the accessibility tree; screen reader users get the Cancel
+            button in the sheet instead. */}
+        <Pressable
+          style={styles.backdrop}
+          onPress={onDismiss}
+          accessible={false}
+          importantForAccessibility="no"
+        >
+          <Pressable
+            style={styles.webSheet}
+            onPress={() => {}}
+            accessible={false}
+            importantForAccessibility="no"
+          >
             <input
               type={mode === 'time' ? 'time' : 'date'}
               // Formatted in local time on purpose. `toISOString()` would show
@@ -151,9 +165,20 @@ export default function PlatformDatePicker({
   // the picker lives in our own modal and only commits on Done.
   return (
     <Modal transparent visible animationType="slide" onRequestClose={onDismiss}>
-      <Pressable style={styles.backdrop} onPress={onDismiss}>
-        {/* Swallow taps on the sheet itself so they don't dismiss it. */}
-        <Pressable style={styles.sheet} onPress={() => {}}>
+      <Pressable
+        style={styles.backdrop}
+        onPress={onDismiss}
+        accessible={false}
+        importantForAccessibility="no"
+      >
+        {/* Swallow taps on the sheet itself so they don't dismiss it. Kept out
+            of the accessibility tree for the same reason as the backdrop. */}
+        <Pressable
+          style={styles.sheet}
+          onPress={() => {}}
+          accessible={false}
+          importantForAccessibility="no"
+        >
           <DateTimePicker
             value={draft}
             mode={mode}

@@ -3,7 +3,8 @@
     "home": "首頁",
     "appointments": "預約",
     "medications": "用藥",
-    "results": "報告"
+    "results": "報告",
+    "profile": "個人檔案"
   },
   "common": {
     "appName": "Titanium Initium",
@@ -438,5 +439,55 @@
     "notFound": "此公告已不存在。",
     "loadFailed": "無法載入公告，請下拉重試。",
     "readMore": "閱讀更多"
+  },
+  "a11y": {
+    "common": {
+      "goBack": "返回",
+      "stopReading": "停止朗讀",
+      "expandDetails": "顯示詳細資料",
+      "collapseDetails": "隱藏詳細資料",
+      "changeDate": "{{label}}，目前為 {{value}}。開啟日期選擇器",
+      "startDictation": "開始語音輸入",
+      "stopDictation": "停止語音輸入"
+    },
+    "home": {
+      "openProfile": "開啟個人資料",
+      "markMissed": "將「{{title}}」標記為未到",
+      "readUpcoming": "朗讀即將到來的行程",
+      "appointmentRow": "{{date}} 於 {{hospital}} 與 {{doctor}} 醫師的預約"
+    },
+    "appointments": {
+      "add": "新增預約",
+      "edit": "編輯與 {{doctor}} 醫師的預約",
+      "readAloud": "朗讀與 {{doctor}} 醫師的預約"
+    },
+    "medications": {
+      "openLibrary": "開啟藥品清單",
+      "addReminder": "新增用藥提醒",
+      "toggleReminder": "{{name}} 的提醒"
+    },
+    "medicationReminder": {
+      "enableAlarm": "啟用鬧鐘 {{label}}",
+      "changeAlarmTime": "{{label}} 的時間，目前為 {{time}}。開啟時間選擇器"
+    },
+    "results": {
+      "add": "新增檢驗結果",
+      "edit": "編輯 {{date}} 的檢驗報告",
+      "switchToList": "切換為清單檢視",
+      "switchToDashboard": "切換為圖表檢視",
+      "startDate": "起始日期，目前為 {{date}}。開啟日期選擇器",
+      "endDate": "結束日期，目前為 {{date}}。開啟日期選擇器",
+      "metricFallback": "檢測項目 {{number}}"
+    },
+    "news": {
+      "openArticle": "閱讀文章：{{title}}",
+      "readArticle": "朗讀這篇文章"
+    },
+    "managedUsers": {
+      "switchTo": "切換至 {{name}}，{{relationship}}"
+    },
+    "profileHeader": {
+      "switchProfile": "正在檢視 {{name}} 的{{scope}}記錄。切換使用者"
+    }
   }
 }

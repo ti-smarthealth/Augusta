@@ -61,7 +61,7 @@ export default function NewsScreen() {
   return (
     <View style={GlobalStyles.container}>
       <Appbar.Header style={{ backgroundColor: COLORS.surface }}>
-        <Appbar.BackAction onPress={() => goBackOrHome(router)} />
+        <Appbar.BackAction accessibilityLabel={t('a11y.common.goBack')} onPress={() => goBackOrHome(router)} />
         <Appbar.Content title={t('news.title')} />
       </Appbar.Header>
 
@@ -89,6 +89,8 @@ export default function NewsScreen() {
               key={item.id}
               testID={`news-item-${item.id}`}
               onPress={() => router.push(`/news-detail?id=${item.id}`)}
+              accessibilityRole="button"
+              accessibilityLabel={t('a11y.news.openArticle', { title: item.title })}
             >
               <Surface style={GlobalStyles.card} elevation={0}>
                 <View style={styles.tag}>

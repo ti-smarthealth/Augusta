@@ -25,7 +25,8 @@ import {
 import ProfileHeader from '@/components/profile-header';
 import { useAuth } from '@/context/AuthContext';
 import { apiRequest } from '@/utils/api';
-import { COLORS, RADIUS, SHADOWS, SPACING } from '../../constants/theme';
+import { useIsDesktop } from '@/hooks/use-desktop-layout';
+import { COLORS, LAYOUT, RADIUS, SHADOWS, SPACING } from '../../constants/theme';
 import { GlobalStyles } from '../../styles/globalstyles';
 
 // --- Types ---
@@ -39,6 +40,7 @@ export default function ResultsScreen() {
   const router = useRouter();
   const { t } = useTranslation();
   const { width: windowWidth } = useWindowDimensions();
+  const isDesktop = useIsDesktop();
   const { user, activeDependent } = useAuth();
 
   const [loading, setLoading] = useState(true);
@@ -100,8 +102,16 @@ export default function ResultsScreen() {
     };
   }, [filteredResults]);
 
-  const numColumns = windowWidth > 600 ? 3 : 2;
-  const dynamicCardWidth = (windowWidth - (SPACING.xl * 2) - (12 * (numColumns - 1))) / numColumns;
+  // Charts and the quick-stats grid size themselves in pixels, so they have
+  // to be derived from the same width the layout actually gives them: on web
+  // the scroll content is clamped to a centered column (globalstyles), and on
+  // desktop the sidebar takes its share of the window first.
+  const contentWidth = Platform.OS === 'web'
+    ? Math.min(windowWidth - (isDesktop ? LAYOUT.railWidth : 0), LAYOUT.contentMaxWidth)
+    : windowWidth;
+
+  const numColumns = contentWidth > 600 ? 3 : 2;
+  const dynamicCardWidth = (contentWidth - (SPACING.xl * 2) - (12 * (numColumns - 1))) / numColumns;
   const chartKey = `${startDate.getTime()}-${endDate.getTime()}-${selectedField}`;
   const handleDelete = (id: number) => {
     const performDelete = async () => {
@@ -161,8 +171,24 @@ export default function ResultsScreen() {
       <ProfileHeader
         rightActions={
           <View style={{ flexDirection: 'row' }}>
-            <IconButton icon={viewMode === 'dashboard' ? "view-list" : "chart-areaspline"} iconColor={COLORS.ink} size={26} onPress={() => setViewMode(viewMode === 'dashboard' ? 'list' : 'dashboard')} />
-            <IconButton icon="plus-circle-outline" iconColor={COLORS.ink} size={26} onPress={() => router.push('/results-form')} />
+            <IconButton
+              icon={viewMode === 'dashboard' ? "view-list" : "chart-areaspline"}
+              iconColor={COLORS.ink}
+              size={26}
+              onPress={() => setViewMode(viewMode === 'dashboard' ? 'list' : 'dashboard')}
+              accessibilityLabel={
+                viewMode === 'dashboard'
+                  ? t('a11y.results.switchToList')
+                  : t('a11y.results.switchToDashboard')
+              }
+            />
+            <IconButton
+              icon="plus-circle-outline"
+              iconColor={COLORS.ink}
+              size={26}
+              onPress={() => router.push('/results-form')}
+              accessibilityLabel={t('a11y.results.add')}
+            />
           </View>
         }
       />
@@ -183,7 +209,12 @@ export default function ResultsScreen() {
                 onChange={(e) => setStartDate(new Date(e.target.value))}
               />
             ) : (
-              <Pressable onPress={() => setShowStartPicker(true)} style={styles.dateInputRow}>
+              <Pressable
+                onPress={() => setShowStartPicker(true)}
+                style={styles.dateInputRow}
+                accessibilityRole="button"
+                accessibilityLabel={t('a11y.results.startDate', { date: startDate.toLocaleDateString() })}
+              >
                 <MaterialCommunityIcons name="calendar-month" size={16} color={COLORS.primary} style={styles.dateIcon} />
                 <Text style={styles.dateVal}>{startDate.toLocaleDateString()}</Text>
               </Pressable>
@@ -209,7 +240,12 @@ export default function ResultsScreen() {
                 onChange={(e) => setEndDate(new Date(e.target.value))}
               />
             ) : (
-              <Pressable onPress={() => setShowEndPicker(true)} style={styles.dateInputRow}>
+              <Pressable
+                onPress={() => setShowEndPicker(true)}
+                style={styles.dateInputRow}
+                accessibilityRole="button"
+                accessibilityLabel={t('a11y.results.endDate', { date: endDate.toLocaleDateString() })}
+              >
                 <MaterialCommunityIcons name="calendar-month" size={16} color={COLORS.primary} style={styles.dateIcon} />
                 <Text style={styles.dateVal}>{endDate.toLocaleDateString()}</Text>
               </Pressable>
@@ -229,7 +265,7 @@ export default function ResultsScreen() {
                 <LineChart
                   key={`main-${chartKey}`}
                   data={getChartDataForField(selectedField)!}
-                  width={windowWidth - 72} // Adjusted for inner padding
+                  width={contentWidth - 72} // Adjusted for inner padding
                   height={220}
                   chartConfig={mainChartConfig}
                   bezier
@@ -255,6 +291,9 @@ export default function ResultsScreen() {
                       key={num}
                       onPress={() => setSelectedField(num)}
                       style={{ width: dynamicCardWidth, marginBottom: 12 }}
+                      accessibilityRole="button"
+                      accessibilityLabel={config?.display_name ?? t('a11y.results.metricFallback', { number: num })}
+                      accessibilityState={{ selected: isSelected }}
                     >
                       <View style={[
                         styles.miniCardWrapper,
@@ -303,8 +342,25 @@ export default function ResultsScreen() {
                     <Text style={styles.reportDate}>{new Date(report.test_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</Text>
                   </View>
                   <View style={styles.actionGroup}>
-                    <IconButton icon="pencil-outline" size={18} onPress={() => navigateToEdit(report)} />
-                    <IconButton icon={expandedId === report.id ? "chevron-up" : "chevron-down"} size={22} onPress={() => setExpandedId(expandedId === report.id ? null : report.id)} />
+                    <IconButton
+                      icon="pencil-outline"
+                      size={18}
+                      onPress={() => navigateToEdit(report)}
+                      accessibilityLabel={t('a11y.results.edit', {
+                        date: new Date(report.test_date).toLocaleDateString(),
+                      })}
+                    />
+                    <IconButton
+                      icon={expandedId === report.id ? "chevron-up" : "chevron-down"}
+                      size={22}
+                      onPress={() => setExpandedId(expandedId === report.id ? null : report.id)}
+                      accessibilityLabel={
+                        expandedId === report.id
+                          ? t('a11y.common.collapseDetails')
+                          : t('a11y.common.expandDetails')
+                      }
+                      accessibilityState={{ expanded: expandedId === report.id }}
+                    />
                   </View>
                 </View>
 

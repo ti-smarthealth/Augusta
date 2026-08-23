@@ -119,7 +119,7 @@ export default function MedicationLibraryScreen() {
   return (
     <View style={GlobalStyles.container}>
       <Appbar.Header style={{ backgroundColor: COLORS.background }}>
-        <Appbar.BackAction onPress={() => goBackOrHome(router)} />
+        <Appbar.BackAction accessibilityLabel={t('a11y.common.goBack')} onPress={() => goBackOrHome(router)} />
         <Appbar.Content title={t('medicationLibrary.title')} titleStyle={styles.headerTitle} />
         <ActiveProfileBadge />
       </Appbar.Header>
@@ -173,9 +173,13 @@ export default function MedicationLibraryScreen() {
       </ScrollView>
 
       {/* Primary Action FAB */}
+      {/* The visible label is dropped on web, and FAB derives its accessible
+          name from that label — so without an explicit one the web build ships
+          an unnamed button. Set it unconditionally. */}
       <FAB
         icon="plus"
         label={Platform.OS !== 'web' ? t('medicationLibrary.addMedicine') : undefined}
+        accessibilityLabel={t('medicationLibrary.addMedicine')}
         style={styles.fab}
         color="white"
         onPress={() => setVisible(true)}
@@ -189,6 +193,7 @@ export default function MedicationLibraryScreen() {
             <View style={styles.dialogForm}>
               <TextInput
                 label={t('medicationLibrary.nameLabel')}
+                accessibilityLabel={t('medicationLibrary.nameLabel')}
                 value={newName}
                 onChangeText={(val) => { setNewName(val); setFormError(false); }}
                 mode="outlined"
@@ -198,6 +203,7 @@ export default function MedicationLibraryScreen() {
               />
               <TextInput
                 label={t('medicationLibrary.dosagesLabel')}
+                accessibilityLabel={t('medicationLibrary.dosagesLabel')}
                 placeholder={t('medicationLibrary.dosagesPlaceholder')}
                 value={newDosage}
                 onChangeText={(val) => { setNewDosage(val); setFormError(false); }}

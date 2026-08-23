@@ -5,7 +5,6 @@ import { useTranslation } from 'react-i18next';
 import {
   ActivityIndicator,
   Alert,
-  Dimensions,
   Platform,
   Pressable,
   ScrollView,
@@ -135,7 +134,11 @@ export default function HomeScreen() {
           <Text style={styles.greeting}>{t('home.goodMorning')}</Text>
           <Text style={styles.userName}>{user?.username || t('home.agentFallback')}</Text>
         </View>
-        <Pressable onPress={() => router.push('/profile')}>
+        <Pressable
+          onPress={() => router.push('/profile')}
+          accessibilityRole="button"
+          accessibilityLabel={t('a11y.home.openProfile')}
+        >
           <Avatar.Image
             size={52}
             source={{ uri: `https://api.dicebear.com/7.x/initials/svg?seed=${user?.username}&backgroundColor=6366f1` }}
@@ -177,6 +180,7 @@ export default function HomeScreen() {
                 iconColor={COLORS.surface}
                 size={24}
                 onPress={() => updateStatus(checkInAppt.id, 2)} // Missed/Cancel
+                accessibilityLabel={t('a11y.home.markMissed', { title: checkInAppt.title })}
               />
             </View>
           </Surface>
@@ -203,13 +207,27 @@ export default function HomeScreen() {
               iconColor={speakingId === 'upcoming' ? COLORS.primary : COLORS.ink}
               size={20}
               onPress={() => toggleSpeech('upcoming', upcomingAppointmentsToSpeechText(upcomingAppointments))}
+              accessibilityLabel={
+                speakingId === 'upcoming'
+                  ? t('a11y.common.stopReading')
+                  : t('a11y.home.readUpcoming')
+              }
             />
             <Button textColor={COLORS.primary} onPress={() => router.push('/appointments')}>{t('home.viewAll')}</Button>
           </View>
         </View>
 
         {upcomingAppointments.map((item: any) => (
-          <Pressable key={item.id} onPress={() => router.push('/appointments')}>
+          <Pressable
+            key={item.id}
+            onPress={() => router.push('/appointments')}
+            accessibilityRole="button"
+            accessibilityLabel={t('a11y.home.appointmentRow', {
+              doctor: item.doctor_name,
+              hospital: item.hospital,
+              date: new Date(item.appointment_date).toLocaleDateString(),
+            })}
+          >
             <Surface style={GlobalStyles.listItem} elevation={0}>
               <View style={styles.itemDateBox}>
                 <Text style={styles.itemDateDay}>{new Date(item.appointment_date).getDate()}</Text>
@@ -249,7 +267,12 @@ export default function HomeScreen() {
               </View>
 
               {news.slice(0, 1).map((item) => (
-                <Pressable key={item.id} onPress={() => router.push(`/news-detail?id=${item.id}`)}>
+                <Pressable
+                  key={item.id}
+                  onPress={() => router.push(`/news-detail?id=${item.id}`)}
+                  accessibilityRole="button"
+                  accessibilityLabel={t('a11y.news.openArticle', { title: item.title })}
+                >
                   <Surface style={GlobalStyles.card} elevation={0}>
                     <View style={styles.newsTag}>
                       <Text style={styles.newsTagText}>{item.type.toUpperCase()}</Text>
@@ -274,7 +297,16 @@ export default function HomeScreen() {
  */
 function MetricItem({ icon, label, value, onPress }: any) {
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => ({ opacity: pressed ? 0.7 : 1 })}>
+    // The tile renders the count above an uppercased label, which a screen
+    // reader would announce as two unrelated fragments. Naming it explicitly
+    // keeps "Appointments: 3" as one phrase, and reuses the already-translated
+    // label rather than adding a key that would drift from it.
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => ({ flex: 1, opacity: pressed ? 0.7 : 1 })}
+      accessibilityRole="button"
+      accessibilityLabel={`${label}: ${value}`}
+    >
       <Surface style={styles.metricItem} elevation={0}>
         <MaterialCommunityIcons name={icon} size={20} color={COLORS.primary} />
         <Text style={styles.metricValue}>{value}</Text>
@@ -315,10 +347,11 @@ const styles = StyleSheet.create({
   heroActions: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   heroBtn: { borderRadius: 16, flex: 1, height: 48, justifyContent: 'center' },
 
-  // Metrics Row
-  metricsRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: SPACING.xl },
+  // Metrics Row. Flex-based rather than computed from the window width —
+  // Dimensions.get at module load froze the first-render width, which broke
+  // on rotation and stretched absurdly on desktop.
+  metricsRow: { flexDirection: 'row', gap: SPACING.md, marginTop: SPACING.xl },
   metricItem: {
-    width: (Dimensions.get('window').width / 3) - 24,
     backgroundColor: COLORS.surface,
     padding: 16,
     borderRadius: 24,

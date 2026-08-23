@@ -3,7 +3,8 @@
     "home": "Home",
     "appointments": "Appointments",
     "medications": "Medications",
-    "results": "Results"
+    "results": "Results",
+    "profile": "Profile"
   },
   "common": {
     "appName": "Titanium Initium",
@@ -438,5 +439,55 @@
     "notFound": "This announcement is no longer available.",
     "loadFailed": "Couldn't load announcements. Pull down to try again.",
     "readMore": "Read more"
+  },
+  "a11y": {
+    "common": {
+      "goBack": "Go back",
+      "stopReading": "Stop reading aloud",
+      "expandDetails": "Show details",
+      "collapseDetails": "Hide details",
+      "changeDate": "{{label}}, currently {{value}}. Opens a date picker",
+      "startDictation": "Start voice dictation",
+      "stopDictation": "Stop voice dictation"
+    },
+    "home": {
+      "openProfile": "Open your profile",
+      "markMissed": "Mark {{title}} as missed",
+      "readUpcoming": "Read upcoming schedule aloud",
+      "appointmentRow": "Appointment with {{doctor}} at {{hospital}} on {{date}}"
+    },
+    "appointments": {
+      "add": "Add an appointment",
+      "edit": "Edit appointment with {{doctor}}",
+      "readAloud": "Read appointment with {{doctor}} aloud"
+    },
+    "medications": {
+      "openLibrary": "Open medicine library",
+      "addReminder": "Add a medication reminder",
+      "toggleReminder": "Reminders for {{name}}"
+    },
+    "medicationReminder": {
+      "enableAlarm": "Enable alarm {{label}}",
+      "changeAlarmTime": "Time for {{label}}, currently {{time}}. Opens a time picker"
+    },
+    "results": {
+      "add": "Add a lab result",
+      "edit": "Edit lab report from {{date}}",
+      "switchToList": "Switch to list view",
+      "switchToDashboard": "Switch to chart view",
+      "startDate": "Start date, currently {{date}}. Opens a date picker",
+      "endDate": "End date, currently {{date}}. Opens a date picker",
+      "metricFallback": "Measurement {{number}}"
+    },
+    "news": {
+      "openArticle": "Read article: {{title}}",
+      "readArticle": "Read this article aloud"
+    },
+    "managedUsers": {
+      "switchTo": "Switch to {{name}}, {{relationship}}"
+    },
+    "profileHeader": {
+      "switchProfile": "Viewing {{scope}} records for {{name}}. Switch profile"
+    }
   }
 }

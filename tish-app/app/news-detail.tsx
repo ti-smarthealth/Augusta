@@ -57,13 +57,18 @@ export default function NewsDetailScreen() {
   return (
     <View style={GlobalStyles.container}>
       <Appbar.Header style={{ backgroundColor: COLORS.surface }}>
-        <Appbar.BackAction onPress={() => goBackOrHome(router)} />
+        <Appbar.BackAction accessibilityLabel={t('a11y.common.goBack')} onPress={() => goBackOrHome(router)} />
         <Appbar.Content title={t('news.title')} />
         {article && (
           <IconButton
             testID="news-speak"
             icon={speakingId === article.id ? 'stop' : 'volume-high'}
             onPress={() => toggleSpeech(article.id, speechText)}
+            accessibilityLabel={
+              speakingId === article.id
+                ? t('a11y.common.stopReading')
+                : t('a11y.news.readArticle')
+            }
           />
         )}
       </Appbar.Header>

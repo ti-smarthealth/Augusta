@@ -510,6 +510,7 @@ export default function SignupScreen() {
         <TextInput
           mode="outlined"
           placeholder={t('signup.codePlaceholder')}
+          accessibilityLabel={t('signup.codePlaceholder')}
           value={authCode}
           onChangeText={v => { setAuthCode(v); if (confirmError) setConfirmError(''); }}
           keyboardType="number-pad"
@@ -557,6 +558,7 @@ export default function SignupScreen() {
               mode="outlined"
               value={form.full_name}
               autoComplete="name"
+              accessibilityLabel={t('signup.fullNameLabel')}
               style={styles.input}
               onChangeText={v => setForm({ ...form, full_name: v })}
             />
@@ -596,7 +598,14 @@ export default function SignupScreen() {
 
           <View style={styles.fieldContainer}>
             <Text style={styles.fieldLabel}>{t('signup.birthDateLabel')}</Text>
-            <Pressable onPress={() => setShowDatePicker(true)}>
+            <Pressable
+            onPress={() => setShowDatePicker(true)}
+            accessibilityRole="button"
+            accessibilityLabel={t('a11y.common.changeDate', {
+              label: t('signup.birthDateLabel'),
+              value: form.birth_date.toLocaleDateString(),
+            })}
+          >
               <Surface style={styles.dateSurface} elevation={0}>
                 <MaterialCommunityIcons name="calendar-account" size={20} color={COLORS.primary} style={{ marginRight: 12 }} />
                 <Text style={styles.dateText}>{form.birth_date.toLocaleDateString()}</Text>
@@ -633,7 +642,7 @@ export default function SignupScreen() {
   return (
     <View style={GlobalStyles.container}>
       <Appbar.Header style={{ backgroundColor: COLORS.background }}>
-        <Appbar.BackAction onPress={() => goBackOrHome(router, '/login')} />
+        <Appbar.BackAction accessibilityLabel={t('a11y.common.goBack')} onPress={() => goBackOrHome(router, '/login')} />
         <Appbar.Content title={t('signup.accountRegistration')} titleStyle={{ fontWeight: '800' }} />
       </Appbar.Header>
 
@@ -647,6 +656,7 @@ export default function SignupScreen() {
             autoComplete="username"
             mode="outlined"
             placeholder={t('signup.usernamePlaceholder')}
+            accessibilityLabel={t('signup.usernameLabel')}
             style={styles.input}
             onChangeText={v => setForm({ ...form, username: v })}
           />
@@ -657,6 +667,7 @@ export default function SignupScreen() {
           <TextInput mode="outlined"
             value={form.full_name}
             autoComplete="name"
+            accessibilityLabel={t('signup.fullNameLabel')}
             style={styles.input}
             onChangeText={v => setForm({ ...form, full_name: v })} />
         </View>
@@ -674,12 +685,13 @@ export default function SignupScreen() {
             keyboardType="email-address"
             autoCapitalize="none"
             placeholder={t('signup.emailPlaceholder')}
+            accessibilityLabel={t('signup.emailLabel')}
             activeOutlineColor={emailStatus === 'taken' ? COLORS.error : COLORS.primary}
             error={emailStatus === 'taken'}
             right={
-              emailStatus === 'checking' ? <TextInput.Icon icon={() => <ActivityIndicator size="small" />} /> :
-                emailStatus === 'available' ? <TextInput.Icon icon="check-circle" color="green" /> :
-                  emailStatus === 'taken' ? <TextInput.Icon icon="alert-circle" color="red" /> : null
+              emailStatus === 'checking' ? <TextInput.Icon aria-hidden tabIndex={-1} icon={() => <ActivityIndicator size="small" />} /> :
+                emailStatus === 'available' ? <TextInput.Icon aria-hidden tabIndex={-1} icon="check-circle" color="green" /> :
+                  emailStatus === 'taken' ? <TextInput.Icon aria-hidden tabIndex={-1} icon="alert-circle" color="red" /> : null
             }
           />
           <HelperText type={(emailStatus === 'taken' || emailStatus === 'error') ? "error" : "info"} visible={emailStatus !== 'idle'}>
@@ -700,13 +712,14 @@ export default function SignupScreen() {
             keyboardType="phone-pad"
             style={styles.input}
             placeholder={t('signup.phonePlaceholder')}
+            accessibilityLabel={t('signup.phoneLabel')}
             left={<TextInput.Affix text="+" />}
             activeOutlineColor={phoneStatus === 'taken' ? COLORS.error : COLORS.primary}
             error={phoneStatus === 'taken' || phoneStatus === 'error'}
             right={
-              phoneStatus === 'checking' ? <TextInput.Icon icon={() => <ActivityIndicator size="small" />} /> :
-                phoneStatus === 'available' ? <TextInput.Icon icon="check-circle" color="green" /> :
-                  phoneStatus === 'taken' ? <TextInput.Icon icon="alert-circle" color="red" /> : null
+              phoneStatus === 'checking' ? <TextInput.Icon aria-hidden tabIndex={-1} icon={() => <ActivityIndicator size="small" />} /> :
+                phoneStatus === 'available' ? <TextInput.Icon aria-hidden tabIndex={-1} icon="check-circle" color="green" /> :
+                  phoneStatus === 'taken' ? <TextInput.Icon aria-hidden tabIndex={-1} icon="alert-circle" color="red" /> : null
             }
           />
           {/* Always visible — the country-code hint is the whole point, so it
@@ -724,6 +737,7 @@ export default function SignupScreen() {
             value={form.password}
             mode="outlined"
             secureTextEntry
+            accessibilityLabel={t('signup.passwordLabel')}
             style={styles.input}
             onChangeText={v => setForm({ ...form, password: v })} />
         </View>
@@ -782,7 +796,14 @@ export default function SignupScreen() {
 
         <View style={styles.fieldContainer}>
           <Text style={styles.fieldLabel}>{t('signup.birthDateLabel')}</Text>
-          <Pressable onPress={() => setShowDatePicker(true)}>
+          <Pressable
+            onPress={() => setShowDatePicker(true)}
+            accessibilityRole="button"
+            accessibilityLabel={t('a11y.common.changeDate', {
+              label: t('signup.birthDateLabel'),
+              value: form.birth_date.toLocaleDateString(),
+            })}
+          >
             <Surface style={styles.dateSurface} elevation={0}>
               <MaterialCommunityIcons name="calendar-account" size={20} color={COLORS.primary} style={{ marginRight: 12 }} />
               <Text style={styles.dateText}>{form.birth_date.toLocaleDateString()}</Text>

@@ -7,6 +7,7 @@ import { MD3LightTheme, Provider as PaperProvider } from 'react-native-paper';
 
 // Correct imports
 import AlarmOverlay from '../components/alarm-overlay';
+import { paperSettings } from '../components/paper-icon';
 import { AuthProvider, useAuth } from '../context/AuthContext';
 import { useNotificationSync } from '../hooks/use-notification-sync';
 import { initI18n } from '../i18n';
@@ -236,7 +237,7 @@ export default function RootLayout() {
   }
 
   return (
-    <PaperProvider theme={MD3LightTheme}>
+    <PaperProvider theme={MD3LightTheme} settings={paperSettings}>
       <AuthProvider>
         {/* Pass the alarm state down to the UI wrapper */}
         <AuthProtection alarmData={alarmData} setAlarmData={setAlarmData} />
