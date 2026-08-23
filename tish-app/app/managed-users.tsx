@@ -10,6 +10,7 @@ import { useAuth } from '../context/AuthContext';
 import { GlobalStyles } from '../styles/globalstyles';
 import { apiRequest } from '../utils/api';
 import { apiErrorMessage, describeApiFailure } from '../utils/api-errors';
+import { heading } from '@/utils/accessibility';
 import {
   DEFAULT_RELATIONSHIP_TYPE,
   RELATIONSHIP_TYPES,
@@ -77,7 +78,7 @@ export default function ManagedUsersScreen() {
       </Appbar.Header>
 
       <ScrollView contentContainerStyle={GlobalStyles.scrollContent} keyboardShouldPersistTaps="handled">
-        <Text style={GlobalStyles.sectionTitle}>{t('managedUsers.activeProfiles')}</Text>
+        <Text style={GlobalStyles.sectionTitle} {...heading(2)}>{t('managedUsers.activeProfiles')}</Text>
 
         {/* Switch back to Self */}
         <Pressable

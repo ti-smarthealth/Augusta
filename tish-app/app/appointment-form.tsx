@@ -17,6 +17,7 @@ import PlatformDatePicker from '../components/platform-date-picker';
 import { COLORS, SHADOWS } from '../constants/theme';
 import { GlobalStyles } from '../styles/globalstyles';
 import { apiErrorMessage, describeApiFailure } from '@/utils/api-errors';
+import { heading } from '@/utils/accessibility';
 
 interface AppointmentStatus { id: number; label: string; color: string; }
 
@@ -238,7 +239,7 @@ export default function AppointmentFormScreen() {
         </View>
 
         <View style={styles.sectionHeader}>
-            <Text style={styles.sectionHeaderText}>{t('appointmentForm.locationSection')}</Text>
+            <Text style={styles.sectionHeaderText} {...heading(2)}>{t('appointmentForm.locationSection')}</Text>
         </View>
 
         <View style={styles.fieldContainer}>

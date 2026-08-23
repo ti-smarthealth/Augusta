@@ -187,7 +187,7 @@ export default function AlarmOverlay({
     <Modal visible={isVisible} animationType="slide" transparent={false}>
       <View style={styles.container}>
         <Surface style={styles.content} elevation={0}>
-          <MaterialCommunityIcons name="bell-ring" size={80} color="#EF4444" />
+          <MaterialCommunityIcons aria-hidden name="bell-ring" size={80} color="#EF4444" />
 
           {/*
             Degrade, never blank. A fresh install, cleared data, or a reminder

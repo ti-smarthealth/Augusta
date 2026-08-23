@@ -28,6 +28,7 @@ import { apiRequest } from '@/utils/api';
 import { useIsDesktop } from '@/hooks/use-desktop-layout';
 import { COLORS, LAYOUT, RADIUS, SHADOWS, SPACING } from '../../constants/theme';
 import { GlobalStyles } from '../../styles/globalstyles';
+import { heading } from '@/utils/accessibility';
 
 // --- Types ---
 interface TestConfig { field_number: number; display_name: string; units: string; }
@@ -194,7 +195,7 @@ export default function ResultsScreen() {
       />
 
       <ScrollView contentContainerStyle={GlobalStyles.scrollContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
-        <Text style={styles.pageTitle}>{viewMode === 'dashboard' ? t('results.titleDashboard') : t('results.titleList')}</Text>
+        <Text style={styles.pageTitle} {...heading(1)}>{viewMode === 'dashboard' ? t('results.titleDashboard') : t('results.titleList')}</Text>
         {/* 2. REFACTORED DATE SELECTOR BAR */}
         <Surface style={styles.dateSelectorBar} elevation={0}>
 
@@ -215,14 +216,14 @@ export default function ResultsScreen() {
                 accessibilityRole="button"
                 accessibilityLabel={t('a11y.results.startDate', { date: startDate.toLocaleDateString() })}
               >
-                <MaterialCommunityIcons name="calendar-month" size={16} color={COLORS.primary} style={styles.dateIcon} />
+                <MaterialCommunityIcons aria-hidden name="calendar-month" size={16} color={COLORS.primary} style={styles.dateIcon} />
                 <Text style={styles.dateVal}>{startDate.toLocaleDateString()}</Text>
               </Pressable>
             )}
           </View>
 
           {/* Middle Spacer Arrow */}
-          <MaterialCommunityIcons
+          <MaterialCommunityIcons aria-hidden
             name="arrow-right"
             size={16}
             color={COLORS.secondary}
@@ -246,7 +247,7 @@ export default function ResultsScreen() {
                 accessibilityRole="button"
                 accessibilityLabel={t('a11y.results.endDate', { date: endDate.toLocaleDateString() })}
               >
-                <MaterialCommunityIcons name="calendar-month" size={16} color={COLORS.primary} style={styles.dateIcon} />
+                <MaterialCommunityIcons aria-hidden name="calendar-month" size={16} color={COLORS.primary} style={styles.dateIcon} />
                 <Text style={styles.dateVal}>{endDate.toLocaleDateString()}</Text>
               </Pressable>
             )}
@@ -277,7 +278,7 @@ export default function ResultsScreen() {
             </Surface>
 
             {/* Quick View Grid */}
-            <Text style={[GlobalStyles.sectionTitle, { marginTop: 24, marginBottom: 16 }]}>{t('results.quickStats')}</Text>
+            <Text style={[GlobalStyles.sectionTitle, { marginTop: 24, marginBottom: 16 }]} {...heading(2)}>{t('results.quickStats')}</Text>
             <View style={styles.miniGrid}>
               {[1, 2, 3, 4]
                 .filter(num => getChartDataForField(num) !== null)   // <-- hide fields with no data
@@ -335,7 +336,7 @@ export default function ResultsScreen() {
               <Surface key={report.id} style={styles.reportCard} elevation={0}>
                 <View style={styles.cardHeaderRow}>
                   <View style={styles.flaskIconBox}>
-                    <MaterialCommunityIcons name="flask-outline" size={22} color={COLORS.primary} />
+                    <MaterialCommunityIcons aria-hidden name="flask-outline" size={22} color={COLORS.primary} />
                   </View>
                   <View style={styles.mainInfo}>
                     <Text style={styles.reportTitle}>{t('results.labReport')}</Text>

@@ -59,28 +59,28 @@ export default function TabLayout() {
             name="index"
             options={{
               tabBarLabel: t('tabs.home'),
-              tabBarIcon: ({ color, size }) => <MaterialCommunityIcons name="home" size={size} color={color} />,
+              tabBarIcon: ({ color, size }) => <MaterialCommunityIcons aria-hidden name="home" size={size} color={color} />,
             }}
           />
           <Tabs.Screen
             name="appointments"
             options={{
               tabBarLabel: t('tabs.appointments'),
-              tabBarIcon: ({ color, size }) => <MaterialCommunityIcons name="calendar-check" size={size} color={color} />,
+              tabBarIcon: ({ color, size }) => <MaterialCommunityIcons aria-hidden name="calendar-check" size={size} color={color} />,
             }}
           />
           <Tabs.Screen
             name="medications"
             options={{
               tabBarLabel: t('tabs.medications'),
-              tabBarIcon: ({ color, size }) => <MaterialCommunityIcons name="pill" size={size} color={color} />,
+              tabBarIcon: ({ color, size }) => <MaterialCommunityIcons aria-hidden name="pill" size={size} color={color} />,
             }}
           />
           <Tabs.Screen
             name="results"
             options={{
               tabBarLabel: t('tabs.results'),
-              tabBarIcon: ({ color, size }) => <MaterialCommunityIcons name="flask" size={size} color={color} />,
+              tabBarIcon: ({ color, size }) => <MaterialCommunityIcons aria-hidden name="flask" size={size} color={color} />,
             }}
           />
         </Tabs>
@@ -164,7 +164,7 @@ function RailLink({ item, active, onPress }: { item: RailItem; active: boolean; 
         pressed && { opacity: 0.7 },
       ]}
     >
-      <MaterialCommunityIcons name={item.icon} size={22} color={active ? COLORS.primary : COLORS.slate} />
+      <MaterialCommunityIcons aria-hidden name={item.icon} size={22} color={active ? COLORS.primary : COLORS.slate} />
       <Text style={[styles.railLabel, active && styles.railLabelActive]}>{item.label}</Text>
     </Pressable>
   );

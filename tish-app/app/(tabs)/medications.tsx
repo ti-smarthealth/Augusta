@@ -13,6 +13,7 @@ import { ActivityIndicator, Alert, Platform, RefreshControl, ScrollView, StyleSh
 import { Button, Divider, IconButton, Surface, Text } from 'react-native-paper';
 import { COLORS, RADIUS, SHADOWS } from '../../constants/theme';
 import { GlobalStyles } from '../../styles/globalstyles';
+import { heading } from '@/utils/accessibility';
 
 /** 5.7 — how far back the missed-dose list looks. A week is a review, not an archive. */
 const MISSED_WINDOW_DAYS = 7;
@@ -171,7 +172,7 @@ export default function MedicationsScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); loadData(); }} />}
         keyboardShouldPersistTaps="handled"
       >
-        <Text style={styles.pageTitle}>{t('medications.title')}</Text>
+        <Text style={styles.pageTitle} {...heading(1)}>{t('medications.title')}</Text>
 
         {/*
           5.7 / D-4 — the missed-dose record.
@@ -192,7 +193,7 @@ export default function MedicationsScreen() {
         {missed.length > 0 && (
           <Surface style={styles.missedCard} elevation={0}>
             <View style={styles.missedHeader}>
-              <MaterialCommunityIcons name="clock-outline" size={20} color={COLORS.slate} />
+              <MaterialCommunityIcons aria-hidden name="clock-outline" size={20} color={COLORS.slate} />
               <Text style={styles.missedTitle}>{t('medications.missedTitle')}</Text>
             </View>
             <Text style={styles.missedSubtitle}>{t('medications.missedSubtitle')}</Text>
@@ -228,7 +229,7 @@ export default function MedicationsScreen() {
               /* --- PROFESSIONAL EMPTY STATE --- */
               <View style={styles.emptyState}>
                 <View style={styles.emptyIconCircle}>
-                  <MaterialCommunityIcons name="pill-off" size={48} color={COLORS.secondary} />
+                  <MaterialCommunityIcons aria-hidden name="pill-off" size={48} color={COLORS.secondary} />
                 </View>
                 <Text style={styles.emptyTitle}>{t('medications.emptyTitle')}</Text>
                 <Text style={styles.emptySubtext}>
@@ -254,7 +255,7 @@ export default function MedicationsScreen() {
                     <View style={styles.cardHeader}>
                       <View style={[styles.pillIconBox, { backgroundColor: isActive ? COLORS.primary + '15' : COLORS.background }]}>
 
-                        <MaterialCommunityIcons name="pill" size={24} color={isActive ? COLORS.primary : COLORS.secondary} />
+                        <MaterialCommunityIcons aria-hidden name="pill" size={24} color={isActive ? COLORS.primary : COLORS.secondary} />
                       </View>
                       <View style={styles.mainInfo}>
                         <Text style={styles.medName}>{item.med_name}</Text>

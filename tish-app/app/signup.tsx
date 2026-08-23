@@ -34,6 +34,7 @@ import { useAuth } from '../context/AuthContext';
 import { GlobalStyles } from '../styles/globalstyles';
 import { apiRequest } from '../utils/api';
 import { apiErrorMessage, describeApiFailure } from '../utils/api-errors';
+import { heading } from '@/utils/accessibility';
 
 // Mirrors AuthDeliveryMedium from aws-amplify/auth.
 type DeliveryMedium = 'EMAIL' | 'SMS' | 'PHONE' | 'UNKNOWN';
@@ -493,7 +494,7 @@ export default function SignupScreen() {
 
     return (
       <View style={[GlobalStyles.container, styles.centeredContent]}>
-        <MaterialCommunityIcons
+        <MaterialCommunityIcons aria-hidden
           name={sentBySms ? 'cellphone-message' : 'email-seal'}
           size={80}
           color={COLORS.primary}
@@ -547,7 +548,7 @@ export default function SignupScreen() {
         </Appbar.Header>
 
         <ScrollView contentContainerStyle={GlobalStyles.scrollContent} showsVerticalScrollIndicator={true} keyboardShouldPersistTaps="handled">
-          <Text style={styles.pageTitle}>{t('signup.almostThere')}</Text>
+          <Text style={styles.pageTitle} {...heading(1)}>{t('signup.almostThere')}</Text>
           <Text style={styles.stepSubtitle}>
             {t('signup.verifiedFinishSetup', { identifier: form.email || form.username })}
           </Text>
@@ -564,7 +565,7 @@ export default function SignupScreen() {
             />
           </View>
 
-          <View style={styles.sectionHeader}><Text style={styles.sectionHeaderText}>{t('signup.medicalProfileSection')}</Text></View>
+          <View style={styles.sectionHeader}><Text style={styles.sectionHeaderText} {...heading(2)}>{t('signup.medicalProfileSection')}</Text></View>
 
           <View style={styles.fieldContainer}>
             <Text style={styles.fieldLabel}>{t('signup.genderLabel')}</Text>
@@ -607,7 +608,7 @@ export default function SignupScreen() {
             })}
           >
               <Surface style={styles.dateSurface} elevation={0}>
-                <MaterialCommunityIcons name="calendar-account" size={20} color={COLORS.primary} style={{ marginRight: 12 }} />
+                <MaterialCommunityIcons aria-hidden name="calendar-account" size={20} color={COLORS.primary} style={{ marginRight: 12 }} />
                 <Text style={styles.dateText}>{form.birth_date.toLocaleDateString()}</Text>
               </Surface>
             </Pressable>
@@ -647,7 +648,7 @@ export default function SignupScreen() {
       </Appbar.Header>
 
       <ScrollView contentContainerStyle={GlobalStyles.scrollContent} showsVerticalScrollIndicator={true} keyboardShouldPersistTaps="handled">
-        <Text style={styles.pageTitle}>{t('signup.newUser')}</Text>
+        <Text style={styles.pageTitle} {...heading(1)}>{t('signup.newUser')}</Text>
 
         <View style={styles.fieldContainer}>
           <Text style={styles.fieldLabel}>{t('signup.usernameLabel')}</Text>
@@ -762,7 +763,7 @@ export default function SignupScreen() {
           </View>
         )}
 
-        <View style={styles.sectionHeader}><Text style={styles.sectionHeaderText}>{t('signup.medicalProfileSection')}</Text></View>
+        <View style={styles.sectionHeader}><Text style={styles.sectionHeaderText} {...heading(2)}>{t('signup.medicalProfileSection')}</Text></View>
 
         <View style={styles.fieldContainer}>
           <Text style={styles.fieldLabel}>{t('signup.genderLabel')}</Text>
@@ -805,7 +806,7 @@ export default function SignupScreen() {
             })}
           >
             <Surface style={styles.dateSurface} elevation={0}>
-              <MaterialCommunityIcons name="calendar-account" size={20} color={COLORS.primary} style={{ marginRight: 12 }} />
+              <MaterialCommunityIcons aria-hidden name="calendar-account" size={20} color={COLORS.primary} style={{ marginRight: 12 }} />
               <Text style={styles.dateText}>{form.birth_date.toLocaleDateString()}</Text>
             </Surface>
           </Pressable>

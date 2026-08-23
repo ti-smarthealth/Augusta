@@ -39,6 +39,7 @@ import { snoozeMinutesFor } from '@/utils/alarm-settings';
 import { scheduleMedicationNotifications } from '@/utils/notification-helper';
 import ActiveProfileBadge from '@/components/active-profile-badge';
 import { useAuth } from '@/context/AuthContext';
+import { heading } from '@/utils/accessibility';
 
 
 type MealTiming = 'before' | 'after' | 'none';
@@ -438,7 +439,7 @@ export default function MedicationReminderForm() {
 
                 {/* 3. MEAL SCHEDULE */}
                 <View style={styles.sectionHeader}>
-                    <Text style={styles.sectionHeaderText}>{t('medicationReminderForm.scheduleSection')}</Text>
+                    <Text style={styles.sectionHeaderText} {...heading(2)}>{t('medicationReminderForm.scheduleSection')}</Text>
                 </View>
                 <Surface style={styles.scheduleSurface} elevation={0}>
                     {(['breakfast', 'lunch', 'dinner'] as const).map((meal) => (
@@ -470,7 +471,7 @@ export default function MedicationReminderForm() {
 
                 {/* 4. ALARMS */}
                 <View style={styles.sectionHeader}>
-                    <Text style={styles.sectionHeaderText}>{t('medicationReminderForm.alarmsSection')}</Text>
+                    <Text style={styles.sectionHeaderText} {...heading(2)}>{t('medicationReminderForm.alarmsSection')}</Text>
                 </View>
                 <Surface style={styles.alarmSurface} elevation={0}>
                     {[0, 1, 2, 3].map((i) => (
@@ -488,7 +489,7 @@ export default function MedicationReminderForm() {
                                 onPress={() => {
                                     const next = [...activeAlarms]; next[i] = !next[i]; setActiveAlarms(next);
                                 }}>
-                                {activeAlarms[i] && <MaterialCommunityIcons name="check" size={16} color="white" />}
+                                {activeAlarms[i] && <MaterialCommunityIcons aria-hidden name="check" size={16} color="white" />}
                             </Pressable>
                             <TextInput
                                 style={[styles.alarmLabel, { opacity: activeAlarms[i] ? 1 : 0.3 }]}
@@ -527,7 +528,7 @@ export default function MedicationReminderForm() {
 
                 {/* --- 5. ALERT SOUNDS (REFACTORED & ALIGNED) --- */}
                 <View style={styles.sectionHeader}>
-                    <Text style={styles.sectionHeaderText}>{t('medicationReminderForm.soundSection')}</Text>
+                    <Text style={styles.sectionHeaderText} {...heading(2)}>{t('medicationReminderForm.soundSection')}</Text>
                 </View>
                 <Surface style={[styles.cardSurface, { padding: 12 }]} elevation={0}>
                     <View style={styles.chipRow}>
@@ -553,7 +554,7 @@ export default function MedicationReminderForm() {
 
                 {/* --- 5b. ALARM REPEATS (D-9 / 2.6) --- */}
                 <View style={styles.sectionHeader}>
-                    <Text style={styles.sectionHeaderText}>{t('medicationReminderForm.burstSection')}</Text>
+                    <Text style={styles.sectionHeaderText} {...heading(2)}>{t('medicationReminderForm.burstSection')}</Text>
                 </View>
                 <Surface style={[styles.cardSurface, { padding: 12 }]} elevation={0}>
                     <Text style={styles.sectionLabel}>{t('medicationReminderForm.burstLabel')}</Text>
@@ -589,7 +590,7 @@ export default function MedicationReminderForm() {
 
                 {/* --- 5c. SNOOZE (4.4 / migration 008) --- */}
                 <View style={styles.sectionHeader}>
-                    <Text style={styles.sectionHeaderText}>{t('medicationReminderForm.snoozeSection')}</Text>
+                    <Text style={styles.sectionHeaderText} {...heading(2)}>{t('medicationReminderForm.snoozeSection')}</Text>
                 </View>
                 <Surface style={[styles.cardSurface, { padding: 12 }]} elevation={0}>
                     <Text style={styles.sectionLabel}>{t('medicationReminderForm.snoozeLabel')}</Text>
@@ -625,7 +626,7 @@ export default function MedicationReminderForm() {
 
                 {/* --- 5d. CAREGIVER ESCALATION (D-3 / D-8 / 2.4) --- */}
                 <View style={styles.sectionHeader}>
-                    <Text style={styles.sectionHeaderText}>{t('medicationReminderForm.escalationSection')}</Text>
+                    <Text style={styles.sectionHeaderText} {...heading(2)}>{t('medicationReminderForm.escalationSection')}</Text>
                 </View>
                 <Surface style={[styles.cardSurface, { padding: 12 }]} elevation={0}>
                     <Chip

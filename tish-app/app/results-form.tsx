@@ -14,6 +14,7 @@ import {
 // Design System Imports
 import ActiveProfileBadge from '@/components/active-profile-badge';
 import { useAuth } from '@/context/AuthContext';
+import { heading } from '@/utils/accessibility';
 import PlatformDatePicker from '../components/platform-date-picker';
 import { COLORS, RADIUS, SHADOWS } from '../constants/theme';
 import { GlobalStyles } from '../styles/globalstyles';
@@ -168,7 +169,7 @@ export default function ResultsFormScreen() {
         
         {/* --- DATE SELECTION SECTION --- */}
         <View style={styles.sectionHeader}>
-            <Text style={styles.sectionHeaderText}>{t('resultsForm.testDetails')}</Text>
+            <Text style={styles.sectionHeaderText} {...heading(2)}>{t('resultsForm.testDetails')}</Text>
         </View>
 
         <View style={styles.fieldContainer}>
@@ -227,7 +228,7 @@ export default function ResultsFormScreen() {
 
         {/* --- NUMERIC RESULTS SECTION --- */}
         <View style={[styles.sectionHeader, { marginTop: 8 }]}>
-            <Text style={styles.sectionHeaderText}>{t('resultsForm.numericValues')}</Text>
+            <Text style={styles.sectionHeaderText} {...heading(2)}>{t('resultsForm.numericValues')}</Text>
         </View>
 
         {configs.map((cfg) => {

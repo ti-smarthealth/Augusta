@@ -27,6 +27,7 @@ import { upcomingAppointmentsToSpeechText } from '@/utils/appointment-speech';
 import { COLORS, SHADOWS, SPACING } from '../../constants/theme';
 import { useAuth } from '../../context/AuthContext';
 import { GlobalStyles } from '../../styles/globalstyles';
+import { heading } from '@/utils/accessibility';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -200,7 +201,7 @@ export default function HomeScreen() {
 
         {/* 4. UPCOMING LIST (Uses GlobalStyles.listItem) */}
         <View style={GlobalStyles.sectionHeader}>
-          <Text style={GlobalStyles.sectionTitle}>{t('home.upcomingSchedule')}</Text>
+          <Text style={GlobalStyles.sectionTitle} {...heading(2)}>{t('home.upcomingSchedule')}</Text>
           <View style={styles.sectionHeaderActions}>
             <IconButton
               icon={speakingId === 'upcoming' ? "volume-off" : "volume-high"}
@@ -239,7 +240,7 @@ export default function HomeScreen() {
                 <Text style={styles.itemTitle}>{item.doctor_name}</Text>
                 <Text style={styles.itemSub}>{item.hospital}</Text>
               </View>
-              <MaterialCommunityIcons name="chevron-right" size={20} color={COLORS.secondary} />
+              <MaterialCommunityIcons aria-hidden name="chevron-right" size={20} color={COLORS.secondary} />
             </Surface>
           </Pressable>
         ))}
@@ -254,7 +255,7 @@ export default function HomeScreen() {
           return (
             <>
               <View style={GlobalStyles.sectionHeader}>
-                <Text style={GlobalStyles.sectionTitle}>{t('home.newsAndAnnouncements')}</Text>
+                <Text style={GlobalStyles.sectionTitle} {...heading(2)}>{t('home.newsAndAnnouncements')}</Text>
                 {news.length > 1 && (
                   <Button
                     compact
@@ -308,7 +309,7 @@ function MetricItem({ icon, label, value, onPress }: any) {
       accessibilityLabel={`${label}: ${value}`}
     >
       <Surface style={styles.metricItem} elevation={0}>
-        <MaterialCommunityIcons name={icon} size={20} color={COLORS.primary} />
+        <MaterialCommunityIcons aria-hidden name={icon} size={20} color={COLORS.primary} />
         <Text style={styles.metricValue}>{value}</Text>
         <Text style={styles.metricLabel}>{label.toUpperCase()}</Text>
       </Surface>

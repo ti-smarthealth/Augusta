@@ -171,7 +171,7 @@ export default function ForgotPasswordScreen() {
 
     return (
       <View style={[GlobalStyles.container, styles.centeredContent]}>
-        <MaterialCommunityIcons
+        <MaterialCommunityIcons aria-hidden
           name={sentBySms ? 'cellphone-message' : 'email-seal'}
           size={72}
           color={COLORS.primary}
@@ -253,7 +253,7 @@ export default function ForgotPasswordScreen() {
   // --- STEP 1 RENDER ---
   return (
     <View style={[GlobalStyles.container, styles.centeredContent]}>
-      <MaterialCommunityIcons name="lock-question" size={72} color={COLORS.primary} />
+      <MaterialCommunityIcons aria-hidden name="lock-question" size={72} color={COLORS.primary} />
       <Text variant="headlineMedium" style={styles.stepTitle}>{t('forgotPassword.title')}</Text>
 
       {/* Arriving here because Cognito demanded a reset (e.g. an admin forced

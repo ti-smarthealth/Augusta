@@ -26,6 +26,7 @@ import { apiRequest } from '@/utils/api';
 import { appointmentToSpeechText } from '@/utils/appointment-speech';
 import { COLORS, RADIUS, SHADOWS } from '../../constants/theme';
 import { GlobalStyles } from '../../styles/globalstyles';
+import { heading } from '@/utils/accessibility';
 
 
 export default function AppointmentsScreen() {
@@ -125,7 +126,7 @@ export default function AppointmentsScreen() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        <Text style={styles.pageTitle}>{t('appointments.title')}</Text>
+        <Text style={styles.pageTitle} {...heading(1)}>{t('appointments.title')}</Text>
 
         {/* 2. WRAPPING CHIPS (Themed) */}
         <View style={styles.filterContainer}>
@@ -153,7 +154,7 @@ export default function AppointmentsScreen() {
         <View style={styles.listContainer}>
           {filteredData.length === 0 ? (
             <View style={styles.emptyState}>
-              <MaterialCommunityIcons name="calendar-blank" size={48} color={COLORS.secondary} />
+              <MaterialCommunityIcons aria-hidden name="calendar-blank" size={48} color={COLORS.secondary} />
               <Text style={styles.emptyText}>{t('appointments.noneFoundInFilter', { filter: filterDisplayLabel(filter) })}</Text>
             </View>
           ) : (

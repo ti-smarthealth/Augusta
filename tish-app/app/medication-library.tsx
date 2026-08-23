@@ -151,20 +151,20 @@ export default function MedicationLibraryScreen() {
           <View style={styles.listContainer}>
             {filteredMeds.length === 0 ? (
               <View style={styles.emptyState}>
-                <MaterialCommunityIcons name="pill-off" size={48} color={COLORS.secondary} />
+                <MaterialCommunityIcons aria-hidden name="pill-off" size={48} color={COLORS.secondary} />
                 <Text style={styles.emptyText}>{t('medicationLibrary.emptyText')}</Text>
               </View>
             ) : (
               filteredMeds.map((item) => (
                 <Surface key={item.id} style={styles.medListItem} elevation={0}>
                   <View style={styles.iconBox}>
-                    <MaterialCommunityIcons name="pill" size={24} color={COLORS.primary} />
+                    <MaterialCommunityIcons aria-hidden name="pill" size={24} color={COLORS.primary} />
                   </View>
                   <View style={styles.medInfo}>
                     <Text style={styles.medName}>{item.name}</Text>
                     <Text style={styles.medDosages}>{t('medicationLibrary.availableDosage', { dosage: item.default_dosage })}</Text>
                   </View>
-                  <MaterialCommunityIcons name="chevron-right" size={20} color={COLORS.secondary} />
+                  <MaterialCommunityIcons aria-hidden name="chevron-right" size={20} color={COLORS.secondary} />
                 </Surface>
               ))
             )}

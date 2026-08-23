@@ -19,6 +19,12 @@ const PRIMITIVE = new Set([
 // Self-naming or delegating — not our problem at the call site.
 const DELEGATES = new Set(['Chip', 'Menu.Item', 'List.Item', 'MetricItem', 'RailLink', 'Appbar.Content']);
 
+// Styles that make a Text look like a heading. Anything wearing one of these
+// has to say so programmatically too, or screen reader users lose the ability
+// to navigate the screen by heading and can only read it top to bottom.
+// Paper's Appbar.Content already marks its own title, so it is not listed.
+const HEADING_STYLES = ['pageTitle', 'sectionTitle', 'sectionHeaderText'];
+
 function walkFiles(dir, out = []) {
   for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
     const p = path.join(dir, e.name);
@@ -76,6 +82,19 @@ for (const file of [...walkFiles(path.join(ROOT, 'app')), ...walkFiles(path.join
           unnamed.push({ rel, line, tag, why: 'NO NAME' });
         }
       }
+
+      // A Text wearing a heading style has to be marked as a heading.
+      if (tag === 'Text' && props.has('style')) {
+        const styleText = props.get('style').getText(sf);
+        const looksLikeHeading = HEADING_STYLES.some((s) => styleText.includes('.' + s));
+        const marked =
+          props.has('accessibilityRole') ||
+          props.has('role') ||
+          open.attributes.properties.some((a) => ts.isJsxSpreadAttribute(a) && /heading\(/.test(a.getText(sf)));
+        if (looksLikeHeading && !marked) {
+          unnamed.push({ rel, line, tag, why: 'heading style, not marked as a heading' });
+        }
+      }
     }
     ts.forEachChild(node, visit);
   };
@@ -87,11 +106,14 @@ console.log('named by text    : ' + byText);
 console.log('outstanding      : ' + unnamed.length);
 
 const noName = unnamed.filter((u) => u.why === 'NO NAME');
-const noRole = unnamed.filter((u) => u.why !== 'NO NAME');
+const noHeading = unnamed.filter((u) => u.why.startsWith('heading style'));
+const noRole = unnamed.filter((u) => u.why !== 'NO NAME' && !u.why.startsWith('heading style'));
 
 console.log('\n--- NO ACCESSIBLE NAME (' + noName.length + ') ---');
 for (const u of noName) console.log('  ' + u.rel + ':' + u.line + '  ' + u.tag);
 console.log('\n--- named, but no button role (' + noRole.length + ') ---');
 for (const u of noRole) console.log('  ' + u.rel + ':' + u.line + '  ' + u.tag);
+console.log('\n--- heading style, not marked as a heading (' + noHeading.length + ') ---');
+for (const u of noHeading) console.log('  ' + u.rel + ':' + u.line + '  add {...heading(n)}');
 
 if (unnamed.length > 0) process.exit(1);
