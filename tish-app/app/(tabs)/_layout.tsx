@@ -124,7 +124,9 @@ function DesktopRail() {
         <Text style={styles.brandName} numberOfLines={2}>{t('common.appName')}</Text>
       </View>
 
-      <View style={styles.navGroup}>
+      {/* A `tab` is only meaningful inside a `tablist` — without the container
+          role the four links are invalid ARIA rather than merely unlabelled. */}
+      <View style={styles.navGroup} accessibilityRole="tablist">
         {items.map((item) => (
           <RailLink
             key={item.route}
@@ -137,9 +139,12 @@ function DesktopRail() {
 
       <View style={styles.railFooter}>
         <Divider style={styles.railDivider} />
+        {/* Not a tab: it pushes a stack screen rather than switching between
+            the four siblings above, and it sits outside the tablist. */}
         <RailLink
           item={{ route: '/', icon: 'account-circle-outline', label: t('tabs.profile'), testID: 'rail-profile' }}
           active={false}
+          role="link"
           onPress={() => router.push('/profile')}
         />
       </View>
@@ -147,7 +152,7 @@ function DesktopRail() {
   );
 }
 
-function RailLink({ item, active, onPress }: { item: RailItem; active: boolean; onPress: () => void }) {
+function RailLink({ item, active, onPress, role = 'tab' }: { item: RailItem; active: boolean; onPress: () => void; role?: 'tab' | 'link' }) {
   return (
     <Pressable
       testID={item.testID}
@@ -155,9 +160,12 @@ function RailLink({ item, active, onPress }: { item: RailItem; active: boolean; 
       // The label already reads, but "active" is carried purely by colour —
       // without selected state a screen reader gives no way to tell which
       // section you are currently in.
-      accessibilityRole="tab"
+      accessibilityRole={role}
       accessibilityLabel={item.label} {...a11yLang()}
       accessibilityState={{ selected: active }}
+      // react-native-web does not derive aria-selected from accessibilityState,
+      // so on the web build the state would be silently absent.
+      aria-selected={role === 'tab' ? active : undefined}
       style={({ pressed, hovered }: any) => [
         styles.railItem,
         active && styles.railItemActive,

@@ -487,6 +487,11 @@ export default function MedicationReminderForm() {
                                     label: alarmLabels[i] || t('medications.alarmDefaultLabel', { number: i + 1 }),
                                 })} {...a11yLang()}
                                 accessibilityState={{ checked: activeAlarms[i] }}
+                                // role="checkbox" *requires* a checked state, and
+                                // react-native-web does not derive aria-checked
+                                // from accessibilityState — so without this the
+                                // web build ships invalid ARIA, not just a gap.
+                                aria-checked={activeAlarms[i]}
                                 onPress={() => {
                                     const next = [...activeAlarms]; next[i] = !next[i]; setActiveAlarms(next);
                                 }}>
@@ -505,7 +510,7 @@ export default function MedicationReminderForm() {
                             />
                             <View style={styles.timeInputWrapper}>
                                 {Platform.OS === 'web' ? (
-                                    <input type="time" disabled={!activeAlarms[i]} value={formatTimeForWeb(alarmTimes[i])} style={webTimeInputStyle}
+                                    <input type="time" aria-label={t('a11y.medicationReminder.changeAlarmTime', { label: alarmLabels[i] || t('medications.alarmDefaultLabel', { number: i + 1 }), time: formatTimeForWeb(alarmTimes[i]) })} disabled={!activeAlarms[i]} value={formatTimeForWeb(alarmTimes[i])} style={webTimeInputStyle}
                                         onChange={(e) => { const [h, m] = e.target.value.split(':').map(Number); const d = new Date(); d.setHours(h, m, 0, 0); const n = [...alarmTimes]; n[i] = d; setAlarmTimes(n); }}
                                     />
                                 ) : (

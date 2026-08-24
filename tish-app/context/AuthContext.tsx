@@ -1,4 +1,6 @@
+import { MOCK } from '@/constants/config';
 import { apiRequest } from '@/utils/api';
+import { MOCK_USER } from '@/utils/mock';
 import { unregisterPushToken } from '@/utils/push-token';
 import { cacheOwnerNames } from '@/utils/reminder-store';
 import { fetchAuthSession, signOut } from 'aws-amplify/auth';
@@ -132,6 +134,17 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const checkUser = async () => {
+    // Fixture mode short-circuits the whole session lookup — there is no
+    // Cognito to ask, and `apiRequest` is answering from `utils/mock.ts`.
+    if (MOCK) {
+      setToken('mock-token');
+      setUser(MOCK_USER as User);
+      restoreActiveDependent();
+      loadDependents();
+      setIsLoading(false);
+      return;
+    }
+
     // 1. Keep isLoading = true throughout the whole process
     try {
       const session = await fetchAuthSession();

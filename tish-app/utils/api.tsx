@@ -1,6 +1,7 @@
 // utils/api.ts
 import { fetchAuthSession } from "@aws-amplify/auth";
-import { API_BASE_URL as BASE_URL } from "../constants/config";
+import { API_BASE_URL as BASE_URL, MOCK } from "../constants/config";
+import { mockApiRequest } from "./mock";
 
 interface RequestOptions extends Omit<RequestInit, 'body'> {
   /**
@@ -23,6 +24,9 @@ export const apiRequest = async (
   targetUserId?: number
 ) => {
   const { method = 'GET', body, headers, ...rest } = options;
+
+  // Before the session lookup, so fixture mode never touches Amplify at all.
+  if (MOCK) return mockApiRequest(endpoint, method, body);
 
   let token: string | undefined;
   try {

@@ -38,7 +38,7 @@ export default function HomeScreen() {
   const locale = announcementLocaleFrom(i18n.language);
 
   const [loading, setLoading] = useState(true);
-  const [data, setData] = useState<any>({ appointments: [], meds: [], news: [] });
+  const [data, setData] = useState<any>({ appointments: [], meds: [], news: [], reports: [] });
   const [checkInAppt, setCheckInAppt] = useState<any>(null);
 
   // Home has to read from whoever is currently in scope. It used to read with
@@ -52,24 +52,33 @@ export default function HomeScreen() {
     if (!user || user.id === 0) return;
     try {
       setLoading(true);
-      const [apptRes, newsRes, medRes] = await Promise.all([
+      const [apptRes, newsRes, medRes, reportRes] = await Promise.all([
         apiRequest(`/appointments`, {}, scopedUserId),
         // The client sends its own language: `changeLanguage` writes
         // AsyncStorage and never syncs `users.locale`, so the server's stored
         // copy is whatever registration defaulted it to.
         apiRequest(`/announcements?locale=${encodeURIComponent(locale)}`, {}, scopedUserId),
-        apiRequest(`/medication-reminders`, {}, scopedUserId)
+        apiRequest(`/medication-reminders`, {}, scopedUserId),
+        // The Reports metric below reads `data.reports`, which nothing ever
+        // fetched or initialised — so the tile threw on `.length` as soon as
+        // the first load resolved, taking the whole screen with it.
+        apiRequest(`/test-results`, {}, scopedUserId)
       ]);
 
       const appts = await apptRes.json();
       const news = await newsRes.json();
       const meds = await medRes.json();
-      console.log("Fetched Data:", { appts, news, meds });
+      const reports = await reportRes.json();
       const now = new Date();
       // Logic: Find the soonest appointment with "New" status for the Hero Card
       const overdueOrSoon = appts?.find((a: any) => a.status_label === 'New');
 
-      setData({ appointments: appts, meds, news });
+      setData({
+        appointments: Array.isArray(appts) ? appts : [],
+        meds: Array.isArray(meds) ? meds : [],
+        news: Array.isArray(news) ? news : [],
+        reports: Array.isArray(reports) ? reports : [],
+      });
       setCheckInAppt(overdueOrSoon || null);
     } catch (e) {
       console.error("Dashboard Load Error:", e);

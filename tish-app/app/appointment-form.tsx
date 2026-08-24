@@ -201,14 +201,14 @@ export default function AppointmentFormScreen() {
                     value: date.toLocaleDateString(appLocale()),
                 })} {...a11yLang()}
             >
-                <View pointerEvents="none">
+                <View pointerEvents="none" aria-hidden importantForAccessibility="no-hide-descendants">
                     <TextInput
                         label={t('appointmentForm.dateLabel')}
                         accessibilityLabel={t('appointmentForm.dateLabel')} {...a11yLang()}
                         value={date.toLocaleDateString(appLocale())}
                         mode="outlined" 
                         style={styles.input} 
-                        editable={false} 
+                        editable={false} tabIndex={-1} 
                         right={<TextInput.Icon aria-hidden tabIndex={-1} icon="calendar" color={COLORS.primary} />} 
                     />
                 </View>

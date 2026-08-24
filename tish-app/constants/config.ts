@@ -16,6 +16,25 @@
 
 export const API_BASE_URL = 'https://u91xzojfja.execute-api.ap-east-2.amazonaws.com/production';
 
+// --- Fixture mode ----------------------------------------------------------
+
+/**
+ * Run the app against fixtures instead of Cognito and the API.
+ *
+ * Enable with `EXPO_PUBLIC_MOCK=1` when starting the dev server. Twelve of the
+ * fifteen routes need a session, which put them out of reach of automated
+ * accessibility scanning, of CI, and of UI work without a network. The admin
+ * dashboard solved the same problem the same way — see `VITE_MOCK` in
+ * `dashboard/src/lib/config.ts`.
+ *
+ * **Gated on `__DEV__` as well as the variable**, so no combination of
+ * environment can switch an authentication bypass on in a release build. The
+ * env var alone is not load-bearing for safety; `__DEV__` is.
+ *
+ * Fixtures live in `utils/mock.ts`.
+ */
+export const MOCK = __DEV__ && process.env.EXPO_PUBLIC_MOCK === '1';
+
 // --- Product analytics ingest (TELEMETRY.md §3) ----------------------------
 
 /**

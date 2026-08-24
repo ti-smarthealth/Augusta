@@ -206,6 +206,7 @@ export default function ResultsScreen() {
             {Platform.OS === 'web' ? (
               <input
                 type="date"
+                aria-label={t('results.start')}
                 value={startDate.toISOString().split('T')[0]}
                 style={webInputStyle}
                 onChange={(e) => setStartDate(new Date(e.target.value))}
@@ -237,6 +238,7 @@ export default function ResultsScreen() {
             {Platform.OS === 'web' ? (
               <input
                 type="date"
+                aria-label={t('results.end')}
                 value={endDate.toISOString().split('T')[0]}
                 style={webInputStyle}
                 onChange={(e) => setEndDate(new Date(e.target.value))}

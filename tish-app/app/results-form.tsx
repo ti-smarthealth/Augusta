@@ -182,6 +182,7 @@ export default function ResultsFormScreen() {
             {Platform.OS === 'web' ? (
               <input
                 type="date"
+                aria-label={t('resultsForm.dateOfTest')}
                 value={toLocalDateString(date)}
                 onChange={(e) => {
                   const [y, m, d] = e.target.value.split('-').map(Number);
@@ -200,7 +201,7 @@ export default function ResultsFormScreen() {
                   value: date.toLocaleDateString(appLocale()),
                 })} {...a11yLang()}
               >
-                <View pointerEvents="none">
+                <View pointerEvents="none" aria-hidden importantForAccessibility="no-hide-descendants">
                     <TextInput
                         label={t('resultsForm.dateOfTest')}
                         accessibilityLabel={t('resultsForm.dateOfTest')} {...a11yLang()}
@@ -208,7 +209,7 @@ export default function ResultsFormScreen() {
                         mode="outlined"
                         outlineColor={COLORS.background}
                         activeOutlineColor={COLORS.primary}
-                        editable={false}
+                        editable={false} tabIndex={-1}
                         style={styles.input}
                         right={<TextInput.Icon aria-hidden tabIndex={-1} icon="calendar" color={COLORS.primary} />}
                     />
