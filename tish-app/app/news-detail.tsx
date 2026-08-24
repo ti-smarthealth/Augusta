@@ -7,6 +7,7 @@ import { Appbar, IconButton, Surface, Text } from 'react-native-paper';
 import { useAuth } from '@/context/AuthContext';
 import { useTextToSpeech } from '@/hooks/use-text-to-speech';
 import { a11yLang } from '@/utils/accessibility';
+import { appLocale } from '@/utils/locale';
 import {
   announcementLocaleFrom,
   resolveAnnouncements,
@@ -94,7 +95,7 @@ export default function NewsDetailScreen() {
               <Text style={styles.headline}>{article.title}</Text>
               {article.publishedAt && (
                 <Text style={styles.date}>
-                  {new Date(article.publishedAt).toLocaleDateString(i18n.language)}
+                  {new Date(article.publishedAt).toLocaleDateString(appLocale())}
                 </Text>
               )}
               <Text style={styles.body}>{article.content}</Text>

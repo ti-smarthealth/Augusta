@@ -2,6 +2,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { appLocale } from '@/utils/locale';
 import {
   Alert,
   Platform,
@@ -98,7 +99,7 @@ export default function ResultsScreen() {
 
     if (dataPoints.length < 2) return null;
     return {
-      labels: dataPoints.slice(-6).map(r => new Date(r.test_date).toLocaleDateString(undefined, { month: 'numeric', day: 'numeric' })),
+      labels: dataPoints.slice(-6).map(r => new Date(r.test_date).toLocaleDateString(appLocale(), { month: 'numeric', day: 'numeric' })),
       datasets: [{ data: dataPoints.slice(-6).map(r => parseFloat(r[`field_${fieldNum}`])) }]
     };
   }, [filteredResults]);
@@ -214,10 +215,10 @@ export default function ResultsScreen() {
                 onPress={() => setShowStartPicker(true)}
                 style={styles.dateInputRow}
                 accessibilityRole="button"
-                accessibilityLabel={t('a11y.results.startDate', { date: startDate.toLocaleDateString() })} {...a11yLang()}
+                accessibilityLabel={t('a11y.results.startDate', { date: startDate.toLocaleDateString(appLocale()) })} {...a11yLang()}
               >
                 <MaterialCommunityIcons aria-hidden name="calendar-month" size={16} color={COLORS.primary} style={styles.dateIcon} />
-                <Text style={styles.dateVal}>{startDate.toLocaleDateString()}</Text>
+                <Text style={styles.dateVal}>{startDate.toLocaleDateString(appLocale())}</Text>
               </Pressable>
             )}
           </View>
@@ -245,10 +246,10 @@ export default function ResultsScreen() {
                 onPress={() => setShowEndPicker(true)}
                 style={styles.dateInputRow}
                 accessibilityRole="button"
-                accessibilityLabel={t('a11y.results.endDate', { date: endDate.toLocaleDateString() })} {...a11yLang()}
+                accessibilityLabel={t('a11y.results.endDate', { date: endDate.toLocaleDateString(appLocale()) })} {...a11yLang()}
               >
                 <MaterialCommunityIcons aria-hidden name="calendar-month" size={16} color={COLORS.primary} style={styles.dateIcon} />
-                <Text style={styles.dateVal}>{endDate.toLocaleDateString()}</Text>
+                <Text style={styles.dateVal}>{endDate.toLocaleDateString(appLocale())}</Text>
               </Pressable>
             )}
           </View>
@@ -340,7 +341,7 @@ export default function ResultsScreen() {
                   </View>
                   <View style={styles.mainInfo}>
                     <Text style={styles.reportTitle}>{t('results.labReport')}</Text>
-                    <Text style={styles.reportDate}>{new Date(report.test_date).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}</Text>
+                    <Text style={styles.reportDate}>{new Date(report.test_date).toLocaleDateString(appLocale(), { day: '2-digit', month: 'short', year: 'numeric' })}</Text>
                   </View>
                   <View style={styles.actionGroup}>
                     <IconButton
@@ -348,7 +349,7 @@ export default function ResultsScreen() {
                       size={18}
                       onPress={() => navigateToEdit(report)}
                       accessibilityLabel={t('a11y.results.edit', {
-                        date: new Date(report.test_date).toLocaleDateString(),
+                        date: new Date(report.test_date).toLocaleDateString(appLocale()),
                       })} {...a11yLang()}
                     />
                     <IconButton

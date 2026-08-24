@@ -3,6 +3,7 @@ import { goBackOrHome } from '@/utils/navigation';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { appLocale } from '@/utils/locale';
 import {
   Appbar,
   Button,
@@ -196,14 +197,14 @@ export default function ResultsFormScreen() {
                 accessibilityRole="button"
                 accessibilityLabel={t('a11y.common.changeDate', {
                   label: t('resultsForm.dateOfTest'),
-                  value: date.toLocaleDateString(),
+                  value: date.toLocaleDateString(appLocale()),
                 })} {...a11yLang()}
               >
                 <View pointerEvents="none">
                     <TextInput
                         label={t('resultsForm.dateOfTest')}
                         accessibilityLabel={t('resultsForm.dateOfTest')} {...a11yLang()}
-                        value={date.toLocaleDateString()}
+                        value={date.toLocaleDateString(appLocale())}
                         mode="outlined"
                         outlineColor={COLORS.background}
                         activeOutlineColor={COLORS.primary}

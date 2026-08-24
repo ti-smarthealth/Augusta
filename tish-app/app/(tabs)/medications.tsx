@@ -14,6 +14,7 @@ import { Button, Divider, IconButton, Surface, Text } from 'react-native-paper';
 import { COLORS, RADIUS, SHADOWS } from '../../constants/theme';
 import { GlobalStyles } from '../../styles/globalstyles';
 import { a11yLang, heading } from '@/utils/accessibility';
+import { appLocale } from '@/utils/locale';
 
 /** 5.7 — how far back the missed-dose list looks. A week is a review, not an archive. */
 const MISSED_WINDOW_DAYS = 7;
@@ -205,9 +206,9 @@ export default function MedicationsScreen() {
                   {i > 0 && <Divider style={styles.missedDivider} />}
                   <View style={styles.missedRowBody}>
                     <Text style={styles.missedWhen}>
-                      {at.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                      {at.toLocaleDateString(appLocale(), { month: 'short', day: 'numeric' })}
                       {'  '}
-                      {at.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      {at.toLocaleTimeString(appLocale(), { hour: '2-digit', minute: '2-digit' })}
                     </Text>
                     <Text style={styles.missedWhat} numberOfLines={1}>
                       {dose.med_name || t('alarmOverlay.unknownMedication')}

@@ -5,6 +5,7 @@ import { goBackOrHome } from '@/utils/navigation';
 import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { appLocale } from '@/utils/locale';
 import {
     Appbar,
     Button,
@@ -514,11 +515,11 @@ export default function MedicationReminderForm() {
                                         accessibilityRole="button"
                                         accessibilityLabel={t('a11y.medicationReminder.changeAlarmTime', {
                                             label: alarmLabels[i] || t('medications.alarmDefaultLabel', { number: i + 1 }),
-                                            time: alarmTimes[i].toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }),
+                                            time: alarmTimes[i].toLocaleTimeString(appLocale(), { hour: '2-digit', minute: '2-digit', hour12: false }),
                                         })} {...a11yLang()}
                                         accessibilityState={{ disabled: !activeAlarms[i] }}
                                     >
-                                        <Text style={styles.timeText}>{alarmTimes[i].toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}</Text>
+                                        <Text style={styles.timeText}>{alarmTimes[i].toLocaleTimeString(appLocale(), { hour: '2-digit', minute: '2-digit', hour12: false })}</Text>
                                     </Pressable>
                                 )}
                             </View>

@@ -3,6 +3,7 @@ import { goBackOrHome } from '@/utils/navigation';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Alert, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { appLocale } from '@/utils/locale';
 import {
   ActivityIndicator,
   Appbar,
@@ -197,14 +198,14 @@ export default function AppointmentFormScreen() {
                 accessibilityRole="button"
                 accessibilityLabel={t('a11y.common.changeDate', {
                     label: t('appointmentForm.dateLabel'),
-                    value: date.toLocaleDateString(),
+                    value: date.toLocaleDateString(appLocale()),
                 })} {...a11yLang()}
             >
                 <View pointerEvents="none">
                     <TextInput
                         label={t('appointmentForm.dateLabel')}
                         accessibilityLabel={t('appointmentForm.dateLabel')} {...a11yLang()}
-                        value={date.toLocaleDateString()}
+                        value={date.toLocaleDateString(appLocale())}
                         mode="outlined" 
                         style={styles.input} 
                         editable={false} 

@@ -1,7 +1,8 @@
+import { appLocale } from '../utils/locale';
 export function appointmentToSpeechText(item: any): string {
   const date = new Date(item.appointment_date);
-  const dateStr = date.toLocaleDateString([], { weekday: 'long', month: 'long', day: 'numeric' });
-  const timeStr = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const dateStr = date.toLocaleDateString(appLocale(), { weekday: 'long', month: 'long', day: 'numeric' });
+  const timeStr = date.toLocaleTimeString(appLocale(), { hour: '2-digit', minute: '2-digit' });
 
   const parts = [
     `Appointment with ${item.doctor_name || 'your provider'} at ${item.hospital || 'the clinic'}`,

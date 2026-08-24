@@ -13,6 +13,7 @@ import ActiveProfileBadge from '../components/active-profile-badge';
 import PlatformDatePicker from '../components/platform-date-picker';
 import { useAuth } from '../context/AuthContext';
 import { a11yLang } from '@/utils/accessibility';
+import { appLocale } from '@/utils/locale';
 import {
   DEFAULT_MEAL_TIMES,
   MEAL_LABEL_KEY,
@@ -473,7 +474,7 @@ export default function ProfileScreen() {
               {i > 0 && <Divider />}
               <List.Item
                 title={t(MEAL_LABEL_KEY[row.key])}
-                description={timeStringToDate(mealTimes[row.column]).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                description={timeStringToDate(mealTimes[row.column]).toLocaleTimeString(appLocale(), { hour: '2-digit', minute: '2-digit' })}
                 left={p => <List.Icon {...p} icon={row.icon} color={COLORS.primary} />}
                 right={p => <List.Icon {...p} icon="pencil-outline" />}
                 disabled={savingMealTimes}
@@ -565,7 +566,7 @@ export default function ProfileScreen() {
           <Divider />
           <List.Item
             title={t('profile.birthDate')}
-            description={user.birth_date ? new Date(user.birth_date).toLocaleDateString() : t('common.notProvided')}
+            description={user.birth_date ? new Date(user.birth_date).toLocaleDateString(appLocale()) : t('common.notProvided')}
             left={p => <List.Icon {...p} icon="cake" />}
           />
 

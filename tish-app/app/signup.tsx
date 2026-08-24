@@ -4,6 +4,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { goBackOrHome } from '@/utils/navigation';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { appLocale } from '@/utils/locale';
 import {
   ActivityIndicator,
   Alert,
@@ -604,12 +605,12 @@ export default function SignupScreen() {
             accessibilityRole="button"
             accessibilityLabel={t('a11y.common.changeDate', {
               label: t('signup.birthDateLabel'),
-              value: form.birth_date.toLocaleDateString(),
+              value: form.birth_date.toLocaleDateString(appLocale()),
             })} {...a11yLang()}
           >
               <Surface style={styles.dateSurface} elevation={0}>
                 <MaterialCommunityIcons aria-hidden name="calendar-account" size={20} color={COLORS.primary} style={{ marginRight: 12 }} />
-                <Text style={styles.dateText}>{form.birth_date.toLocaleDateString()}</Text>
+                <Text style={styles.dateText}>{form.birth_date.toLocaleDateString(appLocale())}</Text>
               </Surface>
             </Pressable>
           </View>
@@ -802,12 +803,12 @@ export default function SignupScreen() {
             accessibilityRole="button"
             accessibilityLabel={t('a11y.common.changeDate', {
               label: t('signup.birthDateLabel'),
-              value: form.birth_date.toLocaleDateString(),
+              value: form.birth_date.toLocaleDateString(appLocale()),
             })} {...a11yLang()}
           >
             <Surface style={styles.dateSurface} elevation={0}>
               <MaterialCommunityIcons aria-hidden name="calendar-account" size={20} color={COLORS.primary} style={{ marginRight: 12 }} />
-              <Text style={styles.dateText}>{form.birth_date.toLocaleDateString()}</Text>
+              <Text style={styles.dateText}>{form.birth_date.toLocaleDateString(appLocale())}</Text>
             </Surface>
           </Pressable>
         </View>

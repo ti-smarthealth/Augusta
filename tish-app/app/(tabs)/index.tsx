@@ -2,6 +2,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { appLocale } from '@/utils/locale';
 import {
   ActivityIndicator,
   Alert,
@@ -162,7 +163,7 @@ export default function HomeScreen() {
             </View>
             <Text style={styles.heroTitle}>{checkInAppt.title}</Text>
             <Text style={styles.heroSubtitle}>
-              {checkInAppt.doctor_name} • {new Date(checkInAppt.appointment_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              {checkInAppt.doctor_name} • {new Date(checkInAppt.appointment_date).toLocaleTimeString(appLocale(), { hour: '2-digit', minute: '2-digit' })}
             </Text>
 
             <View style={styles.heroActions}>
@@ -226,14 +227,14 @@ export default function HomeScreen() {
             accessibilityLabel={t('a11y.home.appointmentRow', {
               doctor: item.doctor_name,
               hospital: item.hospital,
-              date: new Date(item.appointment_date).toLocaleDateString(),
+              date: new Date(item.appointment_date).toLocaleDateString(appLocale()),
             })} {...a11yLang()}
           >
             <Surface style={GlobalStyles.listItem} elevation={0}>
               <View style={styles.itemDateBox}>
                 <Text style={styles.itemDateDay}>{new Date(item.appointment_date).getDate()}</Text>
                 <Text style={styles.itemDateMonth}>
-                  {new Date(item.appointment_date).toLocaleString('default', { month: 'short' })}
+                  {new Date(item.appointment_date).toLocaleString(appLocale(), { month: 'short' })}
                 </Text>
               </View>
               <View style={styles.itemInfo}>

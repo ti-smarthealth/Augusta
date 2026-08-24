@@ -2,6 +2,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { appLocale } from '@/utils/locale';
 import {
   ActivityIndicator,
   RefreshControl,
@@ -169,7 +170,7 @@ export default function AppointmentsScreen() {
                     <View style={styles.dateBox}>
                       <Text style={styles.dateDay}>{dateObj.getDate()}</Text>
                       <Text style={styles.dateMonth}>
-                        {dateObj.toLocaleString('default', { month: 'short' }).toUpperCase()}
+                        {dateObj.toLocaleString(appLocale(), { month: 'short' }).toUpperCase()}
                       </Text>
                     </View>
 
