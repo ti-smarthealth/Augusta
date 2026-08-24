@@ -27,7 +27,7 @@ import { upcomingAppointmentsToSpeechText } from '@/utils/appointment-speech';
 import { COLORS, SHADOWS, SPACING } from '../../constants/theme';
 import { useAuth } from '../../context/AuthContext';
 import { GlobalStyles } from '../../styles/globalstyles';
-import { heading } from '@/utils/accessibility';
+import { a11yLang, heading } from '@/utils/accessibility';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -138,7 +138,7 @@ export default function HomeScreen() {
         <Pressable
           onPress={() => router.push('/profile')}
           accessibilityRole="button"
-          accessibilityLabel={t('a11y.home.openProfile')}
+          accessibilityLabel={t('a11y.home.openProfile')} {...a11yLang()}
         >
           <Avatar.Image
             size={52}
@@ -181,7 +181,7 @@ export default function HomeScreen() {
                 iconColor={COLORS.surface}
                 size={24}
                 onPress={() => updateStatus(checkInAppt.id, 2)} // Missed/Cancel
-                accessibilityLabel={t('a11y.home.markMissed', { title: checkInAppt.title })}
+                accessibilityLabel={t('a11y.home.markMissed', { title: checkInAppt.title })} {...a11yLang()}
               />
             </View>
           </Surface>
@@ -212,7 +212,7 @@ export default function HomeScreen() {
                 speakingId === 'upcoming'
                   ? t('a11y.common.stopReading')
                   : t('a11y.home.readUpcoming')
-              }
+              } {...a11yLang()}
             />
             <Button textColor={COLORS.primary} onPress={() => router.push('/appointments')}>{t('home.viewAll')}</Button>
           </View>
@@ -227,7 +227,7 @@ export default function HomeScreen() {
               doctor: item.doctor_name,
               hospital: item.hospital,
               date: new Date(item.appointment_date).toLocaleDateString(),
-            })}
+            })} {...a11yLang()}
           >
             <Surface style={GlobalStyles.listItem} elevation={0}>
               <View style={styles.itemDateBox}>
@@ -272,7 +272,7 @@ export default function HomeScreen() {
                   key={item.id}
                   onPress={() => router.push(`/news-detail?id=${item.id}`)}
                   accessibilityRole="button"
-                  accessibilityLabel={t('a11y.news.openArticle', { title: item.title })}
+                  accessibilityLabel={t('a11y.news.openArticle', { title: item.title })} {...a11yLang()}
                 >
                   <Surface style={GlobalStyles.card} elevation={0}>
                     <View style={styles.newsTag}>
@@ -306,7 +306,7 @@ function MetricItem({ icon, label, value, onPress }: any) {
       onPress={onPress}
       style={({ pressed }) => ({ flex: 1, opacity: pressed ? 0.7 : 1 })}
       accessibilityRole="button"
-      accessibilityLabel={`${label}: ${value}`}
+      accessibilityLabel={`${label}: ${value}`} {...a11yLang()}
     >
       <Surface style={styles.metricItem} elevation={0}>
         <MaterialCommunityIcons aria-hidden name={icon} size={20} color={COLORS.primary} />

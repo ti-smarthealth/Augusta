@@ -1,6 +1,7 @@
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { a11yLang } from '@/utils/accessibility';
 import {
   ActivityIndicator,
   Pressable,
@@ -61,7 +62,7 @@ export default function NewsScreen() {
   return (
     <View style={GlobalStyles.container}>
       <Appbar.Header style={{ backgroundColor: COLORS.surface }}>
-        <Appbar.BackAction accessibilityLabel={t('a11y.common.goBack')} onPress={() => goBackOrHome(router)} />
+        <Appbar.BackAction accessibilityLabel={t('a11y.common.goBack')} {...a11yLang()} onPress={() => goBackOrHome(router)} />
         <Appbar.Content title={t('news.title')} />
       </Appbar.Header>
 
@@ -90,7 +91,7 @@ export default function NewsScreen() {
               testID={`news-item-${item.id}`}
               onPress={() => router.push(`/news-detail?id=${item.id}`)}
               accessibilityRole="button"
-              accessibilityLabel={t('a11y.news.openArticle', { title: item.title })}
+              accessibilityLabel={t('a11y.news.openArticle', { title: item.title })} {...a11yLang()}
             >
               <Surface style={GlobalStyles.card} elevation={0}>
                 <View style={styles.tag}>

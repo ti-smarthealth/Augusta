@@ -14,7 +14,7 @@ import {
 // Design System Imports
 import ActiveProfileBadge from '@/components/active-profile-badge';
 import { useAuth } from '@/context/AuthContext';
-import { heading } from '@/utils/accessibility';
+import { a11yLang, heading } from '@/utils/accessibility';
 import PlatformDatePicker from '../components/platform-date-picker';
 import { COLORS, RADIUS, SHADOWS } from '../constants/theme';
 import { GlobalStyles } from '../styles/globalstyles';
@@ -156,7 +156,7 @@ export default function ResultsFormScreen() {
   return (
     <View style={GlobalStyles.container}>
       <Appbar.Header style={{ backgroundColor: COLORS.background }}>
-        <Appbar.BackAction accessibilityLabel={t('a11y.common.goBack')} onPress={() => goBackOrHome(router)} disabled={saving} />
+        <Appbar.BackAction accessibilityLabel={t('a11y.common.goBack')} {...a11yLang()} onPress={() => goBackOrHome(router)} disabled={saving} />
         <Appbar.Content title={isEdit ? t('resultsForm.editTitle') : t('resultsForm.newTitle')} titleStyle={styles.headerTitle} />
         <ActiveProfileBadge />
       </Appbar.Header>
@@ -197,12 +197,12 @@ export default function ResultsFormScreen() {
                 accessibilityLabel={t('a11y.common.changeDate', {
                   label: t('resultsForm.dateOfTest'),
                   value: date.toLocaleDateString(),
-                })}
+                })} {...a11yLang()}
               >
                 <View pointerEvents="none">
                     <TextInput
                         label={t('resultsForm.dateOfTest')}
-                        accessibilityLabel={t('resultsForm.dateOfTest')}
+                        accessibilityLabel={t('resultsForm.dateOfTest')} {...a11yLang()}
                         value={date.toLocaleDateString()}
                         mode="outlined"
                         outlineColor={COLORS.background}
@@ -238,7 +238,7 @@ export default function ResultsFormScreen() {
             <View key={cfg.field_number} style={styles.fieldContainer}>
               <TextInput
                 label={`${cfg.display_name} (${cfg.units})`}
-                accessibilityLabel={`${cfg.display_name} (${cfg.units})`}
+                accessibilityLabel={`${cfg.display_name} (${cfg.units})`} {...a11yLang()}
                 value={formValues[key]?.toString() || ''}
                 mode="outlined"
                 outlineColor={COLORS.background}

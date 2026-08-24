@@ -10,7 +10,7 @@ import { useAuth } from '../context/AuthContext';
 import { GlobalStyles } from '../styles/globalstyles';
 import { apiRequest } from '../utils/api';
 import { apiErrorMessage, describeApiFailure } from '../utils/api-errors';
-import { heading } from '@/utils/accessibility';
+import { a11yLang, heading } from '@/utils/accessibility';
 import {
   DEFAULT_RELATIONSHIP_TYPE,
   RELATIONSHIP_TYPES,
@@ -72,7 +72,7 @@ export default function ManagedUsersScreen() {
   return (
     <View style={GlobalStyles.container}>
       <Appbar.Header style={{ backgroundColor: COLORS.background }}>
-        <Appbar.BackAction accessibilityLabel={t('a11y.common.goBack')} onPress={() => goBackOrHome(router)} />
+        <Appbar.BackAction accessibilityLabel={t('a11y.common.goBack')} {...a11yLang()} onPress={() => goBackOrHome(router)} />
         <Appbar.Content title={t('managedUsers.title')} titleStyle={{ fontWeight: '800' }} />
         <ActiveProfileBadge />
       </Appbar.Header>
@@ -84,7 +84,7 @@ export default function ManagedUsersScreen() {
         <Pressable
           onPress={() => { setActiveDependent(null); router.replace('/(tabs)'); }}
           accessibilityRole="button"
-          accessibilityLabel={t('managedUsers.yourOwnRecords')}
+          accessibilityLabel={t('managedUsers.yourOwnRecords')} {...a11yLang()}
           accessibilityState={{ selected: !activeDependent }}
         >
           <Surface style={[styles.userCard, !activeDependent && styles.activeCard]} elevation={0}>
@@ -102,7 +102,7 @@ export default function ManagedUsersScreen() {
             accessibilityLabel={t('a11y.managedUsers.switchTo', {
               name: dep.full_name,
               relationship: labelForType(dep.relationship_type),
-            })}
+            })} {...a11yLang()}
             accessibilityState={{ selected: activeDependent?.id === dep.id }}
           >
             <Surface style={[styles.userCard, activeDependent?.id === dep.id && styles.activeCard]} elevation={0}>
@@ -129,7 +129,7 @@ export default function ManagedUsersScreen() {
             {!handshakeCode ? (
               <>
                 <Text style={{ marginBottom: 15 }}>{t('managedUsers.requestDialogInstructions')}</Text>
-                <TextInput label={t('managedUsers.identifierLabel')} accessibilityLabel={t('managedUsers.identifierLabel')} mode="outlined" value={searchQuery} onChangeText={setSearchQuery} autoCapitalize="none" />
+                <TextInput label={t('managedUsers.identifierLabel')} accessibilityLabel={t('managedUsers.identifierLabel')} {...a11yLang()} mode="outlined" value={searchQuery} onChangeText={setSearchQuery} autoCapitalize="none" />
 
                 {/* 3.4 — how the caregiver describes the relationship.
                     Chips rather than a dropdown: seven short options, and the

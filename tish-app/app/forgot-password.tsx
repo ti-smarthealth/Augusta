@@ -8,6 +8,7 @@ import { Button, Text, TextInput } from 'react-native-paper';
 
 import { COLORS, LAYOUT, RADIUS, SHADOWS } from '../constants/theme';
 import { GlobalStyles } from '../styles/globalstyles';
+import { a11yLang } from '../utils/accessibility';
 
 // Mirrors AuthDeliveryMedium from aws-amplify/auth, same as signup.tsx.
 type DeliveryMedium = 'EMAIL' | 'SMS' | 'PHONE' | 'UNKNOWN';
@@ -188,7 +189,7 @@ export default function ForgotPasswordScreen() {
         <TextInput
           mode="outlined"
           placeholder={t('forgotPassword.codePlaceholder')}
-          accessibilityLabel={t('forgotPassword.codePlaceholder')}
+          accessibilityLabel={t('forgotPassword.codePlaceholder')} {...a11yLang()}
           value={code}
           onChangeText={v => { setCode(v); if (error) setError(''); }}
           keyboardType="number-pad"
@@ -199,7 +200,7 @@ export default function ForgotPasswordScreen() {
         <TextInput
           mode="outlined"
           label={t('forgotPassword.newPasswordLabel')}
-          accessibilityLabel={t('forgotPassword.newPasswordLabel')}
+          accessibilityLabel={t('forgotPassword.newPasswordLabel')} {...a11yLang()}
           value={newPassword}
           onChangeText={v => { setNewPassword(v); if (error) setError(''); }}
           secureTextEntry
@@ -211,7 +212,7 @@ export default function ForgotPasswordScreen() {
         <TextInput
           mode="outlined"
           label={t('forgotPassword.confirmPasswordLabel')}
-          accessibilityLabel={t('forgotPassword.confirmPasswordLabel')}
+          accessibilityLabel={t('forgotPassword.confirmPasswordLabel')} {...a11yLang()}
           value={confirmPassword}
           onChangeText={v => { setConfirmPassword(v); if (error) setError(''); }}
           secureTextEntry
@@ -268,7 +269,7 @@ export default function ForgotPasswordScreen() {
       <TextInput
         mode="outlined"
         label={t('forgotPassword.identifierLabel')}
-        accessibilityLabel={t('forgotPassword.identifierLabel')}
+        accessibilityLabel={t('forgotPassword.identifierLabel')} {...a11yLang()}
         value={identifier}
         onChangeText={v => { setIdentifier(v); if (error) setError(''); }}
         autoCapitalize="none"

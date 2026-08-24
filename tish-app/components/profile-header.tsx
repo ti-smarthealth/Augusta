@@ -5,6 +5,7 @@ import { Platform, Pressable, StyleSheet, View } from 'react-native';
 import { Avatar, Divider, IconButton, Menu, Surface, Text } from 'react-native-paper';
 import { COLORS, LAYOUT } from '../constants/theme';
 import { useAuth } from '../context/AuthContext';
+import { a11yLang } from '../utils/accessibility';
 
 interface ProfileHeaderProps {
   rightActions?: React.ReactNode;
@@ -32,7 +33,7 @@ export default function ProfileHeader({ rightActions }: ProfileHeaderProps) {
             accessibilityLabel={t('a11y.profileHeader.switchProfile', {
               name: displayUser?.full_name ?? '',
               scope: isManaging ? t('common.managing') : t('common.personal'),
-            })}
+            })} {...a11yLang()}
             accessibilityState={{ expanded: visible }}
           >
             <Surface style={[styles.avatarWrapper, isManaging && styles.managingBorder]} elevation={0}>

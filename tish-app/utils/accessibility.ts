@@ -1,6 +1,32 @@
 import { Platform } from 'react-native';
 import type { TextProps } from 'react-native';
 
+import i18next from '../i18n';
+
+/**
+ * Tells VoiceOver which language an element's label is written in.
+ *
+ * This app's language is a stored preference, deliberately independent of the
+ * device's. iOS knows nothing about that, so with the app in 中文 on an
+ * English phone VoiceOver hands Chinese labels to an English voice — silence
+ * or mangled output, depending on which voices are installed. WCAG 3.1.1.
+ *
+ * It has to go on the element that carries the label, not on a screen root.
+ * RN assigns the prop to that one view's own accessibility element
+ * (`RCTViewComponentView.mm`, `self.accessibilityElement.accessibilityLanguage`)
+ * and nothing propagates it to descendants.
+ *
+ * iOS only: the prop does nothing on Android, where TalkBack takes its language
+ * from the system TTS engine and exposes no per-element equivalent.
+ *
+ * Read from the i18next singleton rather than a hook so this stays usable from
+ * anywhere. Every caller already re-renders on a language change — react-i18next
+ * drives that through the `t` they are also using — so the value is current.
+ */
+export function a11yLang(): { accessibilityLanguage?: string } {
+  return Platform.OS === 'ios' ? { accessibilityLanguage: i18next.language } : {};
+}
+
 /**
  * Marks a `Text` as a heading, so screen readers can navigate by it.
  *

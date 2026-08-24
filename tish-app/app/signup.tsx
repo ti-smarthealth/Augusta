@@ -34,7 +34,7 @@ import { useAuth } from '../context/AuthContext';
 import { GlobalStyles } from '../styles/globalstyles';
 import { apiRequest } from '../utils/api';
 import { apiErrorMessage, describeApiFailure } from '../utils/api-errors';
-import { heading } from '@/utils/accessibility';
+import { a11yLang, heading } from '@/utils/accessibility';
 
 // Mirrors AuthDeliveryMedium from aws-amplify/auth.
 type DeliveryMedium = 'EMAIL' | 'SMS' | 'PHONE' | 'UNKNOWN';
@@ -511,7 +511,7 @@ export default function SignupScreen() {
         <TextInput
           mode="outlined"
           placeholder={t('signup.codePlaceholder')}
-          accessibilityLabel={t('signup.codePlaceholder')}
+          accessibilityLabel={t('signup.codePlaceholder')} {...a11yLang()}
           value={authCode}
           onChangeText={v => { setAuthCode(v); if (confirmError) setConfirmError(''); }}
           keyboardType="number-pad"
@@ -559,7 +559,7 @@ export default function SignupScreen() {
               mode="outlined"
               value={form.full_name}
               autoComplete="name"
-              accessibilityLabel={t('signup.fullNameLabel')}
+              accessibilityLabel={t('signup.fullNameLabel')} {...a11yLang()}
               style={styles.input}
               onChangeText={v => setForm({ ...form, full_name: v })}
             />
@@ -605,7 +605,7 @@ export default function SignupScreen() {
             accessibilityLabel={t('a11y.common.changeDate', {
               label: t('signup.birthDateLabel'),
               value: form.birth_date.toLocaleDateString(),
-            })}
+            })} {...a11yLang()}
           >
               <Surface style={styles.dateSurface} elevation={0}>
                 <MaterialCommunityIcons aria-hidden name="calendar-account" size={20} color={COLORS.primary} style={{ marginRight: 12 }} />
@@ -643,7 +643,7 @@ export default function SignupScreen() {
   return (
     <View style={GlobalStyles.container}>
       <Appbar.Header style={{ backgroundColor: COLORS.background }}>
-        <Appbar.BackAction accessibilityLabel={t('a11y.common.goBack')} onPress={() => goBackOrHome(router, '/login')} />
+        <Appbar.BackAction accessibilityLabel={t('a11y.common.goBack')} {...a11yLang()} onPress={() => goBackOrHome(router, '/login')} />
         <Appbar.Content title={t('signup.accountRegistration')} titleStyle={{ fontWeight: '800' }} />
       </Appbar.Header>
 
@@ -657,7 +657,7 @@ export default function SignupScreen() {
             autoComplete="username"
             mode="outlined"
             placeholder={t('signup.usernamePlaceholder')}
-            accessibilityLabel={t('signup.usernameLabel')}
+            accessibilityLabel={t('signup.usernameLabel')} {...a11yLang()}
             style={styles.input}
             onChangeText={v => setForm({ ...form, username: v })}
           />
@@ -668,7 +668,7 @@ export default function SignupScreen() {
           <TextInput mode="outlined"
             value={form.full_name}
             autoComplete="name"
-            accessibilityLabel={t('signup.fullNameLabel')}
+            accessibilityLabel={t('signup.fullNameLabel')} {...a11yLang()}
             style={styles.input}
             onChangeText={v => setForm({ ...form, full_name: v })} />
         </View>
@@ -686,7 +686,7 @@ export default function SignupScreen() {
             keyboardType="email-address"
             autoCapitalize="none"
             placeholder={t('signup.emailPlaceholder')}
-            accessibilityLabel={t('signup.emailLabel')}
+            accessibilityLabel={t('signup.emailLabel')} {...a11yLang()}
             activeOutlineColor={emailStatus === 'taken' ? COLORS.error : COLORS.primary}
             error={emailStatus === 'taken'}
             right={
@@ -713,7 +713,7 @@ export default function SignupScreen() {
             keyboardType="phone-pad"
             style={styles.input}
             placeholder={t('signup.phonePlaceholder')}
-            accessibilityLabel={t('signup.phoneLabel')}
+            accessibilityLabel={t('signup.phoneLabel')} {...a11yLang()}
             left={<TextInput.Affix text="+" />}
             activeOutlineColor={phoneStatus === 'taken' ? COLORS.error : COLORS.primary}
             error={phoneStatus === 'taken' || phoneStatus === 'error'}
@@ -738,7 +738,7 @@ export default function SignupScreen() {
             value={form.password}
             mode="outlined"
             secureTextEntry
-            accessibilityLabel={t('signup.passwordLabel')}
+            accessibilityLabel={t('signup.passwordLabel')} {...a11yLang()}
             style={styles.input}
             onChangeText={v => setForm({ ...form, password: v })} />
         </View>
@@ -803,7 +803,7 @@ export default function SignupScreen() {
             accessibilityLabel={t('a11y.common.changeDate', {
               label: t('signup.birthDateLabel'),
               value: form.birth_date.toLocaleDateString(),
-            })}
+            })} {...a11yLang()}
           >
             <Surface style={styles.dateSurface} elevation={0}>
               <MaterialCommunityIcons aria-hidden name="calendar-account" size={20} color={COLORS.primary} style={{ marginRight: 12 }} />

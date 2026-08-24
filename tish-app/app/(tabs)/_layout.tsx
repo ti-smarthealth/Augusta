@@ -7,6 +7,7 @@ import { BottomNavigation, Divider, Text, useTheme } from 'react-native-paper';
 
 import { COLORS, LAYOUT } from '../../constants/theme';
 import { useIsDesktop } from '../../hooks/use-desktop-layout';
+import { a11yLang } from '../../utils/accessibility';
 
 export default function TabLayout() {
   const theme = useTheme();
@@ -155,7 +156,7 @@ function RailLink({ item, active, onPress }: { item: RailItem; active: boolean; 
       // without selected state a screen reader gives no way to tell which
       // section you are currently in.
       accessibilityRole="tab"
-      accessibilityLabel={item.label}
+      accessibilityLabel={item.label} {...a11yLang()}
       accessibilityState={{ selected: active }}
       style={({ pressed, hovered }: any) => [
         styles.railItem,

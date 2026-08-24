@@ -13,7 +13,7 @@ import { ActivityIndicator, Alert, Platform, RefreshControl, ScrollView, StyleSh
 import { Button, Divider, IconButton, Surface, Text } from 'react-native-paper';
 import { COLORS, RADIUS, SHADOWS } from '../../constants/theme';
 import { GlobalStyles } from '../../styles/globalstyles';
-import { heading } from '@/utils/accessibility';
+import { a11yLang, heading } from '@/utils/accessibility';
 
 /** 5.7 — how far back the missed-dose list looks. A week is a review, not an archive. */
 const MISSED_WINDOW_DAYS = 7;
@@ -154,14 +154,14 @@ export default function MedicationsScreen() {
                 iconColor={COLORS.ink}
                 size={26}
                 onPress={() => router.push('/medication-library')}
-                accessibilityLabel={t('a11y.medications.openLibrary')}
+                accessibilityLabel={t('a11y.medications.openLibrary')} {...a11yLang()}
             />
             <IconButton
                 icon="plus-circle-outline"
                 iconColor={COLORS.ink}
                 size={26}
                 onPress={() => router.push('/medication-reminder-form')}
-                accessibilityLabel={t('a11y.medications.addReminder')}
+                accessibilityLabel={t('a11y.medications.addReminder')} {...a11yLang()}
             />
           </View>
         }
@@ -266,7 +266,7 @@ export default function MedicationsScreen() {
                           value={isActive}
                           onValueChange={() => toggleStatus(item.id, item.status)}
                           thumbColor={isActive ? COLORS.primary : COLORS.secondary}
-                          accessibilityLabel={t('a11y.medications.toggleReminder', { name: item.med_name })}
+                          accessibilityLabel={t('a11y.medications.toggleReminder', { name: item.med_name })} {...a11yLang()}
                         />
                         <IconButton
                           icon={isExpanded ? "chevron-up" : "chevron-down"}
@@ -276,7 +276,7 @@ export default function MedicationsScreen() {
                             isExpanded
                               ? t('a11y.common.collapseDetails')
                               : t('a11y.common.expandDetails')
-                          }
+                          } {...a11yLang()}
                           accessibilityState={{ expanded: isExpanded }}
                         />
                       </View>

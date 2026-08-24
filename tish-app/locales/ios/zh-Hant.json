@@ -1,0 +1,4 @@
+{
+  "NSSpeechRecognitionUsageDescription": "允許 $(PRODUCT_NAME) 使用語音辨識，將您的語音轉換為文字。",
+  "NSMicrophoneUsageDescription": "允許 $(PRODUCT_NAME) 使用麥克風進行語音輸入。"
+}

@@ -28,7 +28,7 @@ import { apiRequest } from '@/utils/api';
 import { useIsDesktop } from '@/hooks/use-desktop-layout';
 import { COLORS, LAYOUT, RADIUS, SHADOWS, SPACING } from '../../constants/theme';
 import { GlobalStyles } from '../../styles/globalstyles';
-import { heading } from '@/utils/accessibility';
+import { a11yLang, heading } from '@/utils/accessibility';
 
 // --- Types ---
 interface TestConfig { field_number: number; display_name: string; units: string; }
@@ -181,14 +181,14 @@ export default function ResultsScreen() {
                 viewMode === 'dashboard'
                   ? t('a11y.results.switchToList')
                   : t('a11y.results.switchToDashboard')
-              }
+              } {...a11yLang()}
             />
             <IconButton
               icon="plus-circle-outline"
               iconColor={COLORS.ink}
               size={26}
               onPress={() => router.push('/results-form')}
-              accessibilityLabel={t('a11y.results.add')}
+              accessibilityLabel={t('a11y.results.add')} {...a11yLang()}
             />
           </View>
         }
@@ -214,7 +214,7 @@ export default function ResultsScreen() {
                 onPress={() => setShowStartPicker(true)}
                 style={styles.dateInputRow}
                 accessibilityRole="button"
-                accessibilityLabel={t('a11y.results.startDate', { date: startDate.toLocaleDateString() })}
+                accessibilityLabel={t('a11y.results.startDate', { date: startDate.toLocaleDateString() })} {...a11yLang()}
               >
                 <MaterialCommunityIcons aria-hidden name="calendar-month" size={16} color={COLORS.primary} style={styles.dateIcon} />
                 <Text style={styles.dateVal}>{startDate.toLocaleDateString()}</Text>
@@ -245,7 +245,7 @@ export default function ResultsScreen() {
                 onPress={() => setShowEndPicker(true)}
                 style={styles.dateInputRow}
                 accessibilityRole="button"
-                accessibilityLabel={t('a11y.results.endDate', { date: endDate.toLocaleDateString() })}
+                accessibilityLabel={t('a11y.results.endDate', { date: endDate.toLocaleDateString() })} {...a11yLang()}
               >
                 <MaterialCommunityIcons aria-hidden name="calendar-month" size={16} color={COLORS.primary} style={styles.dateIcon} />
                 <Text style={styles.dateVal}>{endDate.toLocaleDateString()}</Text>
@@ -293,7 +293,7 @@ export default function ResultsScreen() {
                       onPress={() => setSelectedField(num)}
                       style={{ width: dynamicCardWidth, marginBottom: 12 }}
                       accessibilityRole="button"
-                      accessibilityLabel={config?.display_name ?? t('a11y.results.metricFallback', { number: num })}
+                      accessibilityLabel={config?.display_name ?? t('a11y.results.metricFallback', { number: num })} {...a11yLang()}
                       accessibilityState={{ selected: isSelected }}
                     >
                       <View style={[
@@ -349,7 +349,7 @@ export default function ResultsScreen() {
                       onPress={() => navigateToEdit(report)}
                       accessibilityLabel={t('a11y.results.edit', {
                         date: new Date(report.test_date).toLocaleDateString(),
-                      })}
+                      })} {...a11yLang()}
                     />
                     <IconButton
                       icon={expandedId === report.id ? "chevron-up" : "chevron-down"}
@@ -359,7 +359,7 @@ export default function ResultsScreen() {
                         expandedId === report.id
                           ? t('a11y.common.collapseDetails')
                           : t('a11y.common.expandDetails')
-                      }
+                      } {...a11yLang()}
                       accessibilityState={{ expanded: expandedId === report.id }}
                     />
                   </View>

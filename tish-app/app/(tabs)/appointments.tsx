@@ -26,7 +26,7 @@ import { apiRequest } from '@/utils/api';
 import { appointmentToSpeechText } from '@/utils/appointment-speech';
 import { COLORS, RADIUS, SHADOWS } from '../../constants/theme';
 import { GlobalStyles } from '../../styles/globalstyles';
-import { heading } from '@/utils/accessibility';
+import { a11yLang, heading } from '@/utils/accessibility';
 
 
 export default function AppointmentsScreen() {
@@ -114,7 +114,7 @@ export default function AppointmentsScreen() {
               iconColor={COLORS.ink}
               size={26}
               onPress={() => router.push('/appointment-form')}
-              accessibilityLabel={t('a11y.appointments.add')}
+              accessibilityLabel={t('a11y.appointments.add')} {...a11yLang()}
             />
           </View>
         }
@@ -195,13 +195,13 @@ export default function AppointmentsScreen() {
                           speakingId === item.id
                             ? t('a11y.common.stopReading')
                             : t('a11y.appointments.readAloud', { doctor: item.doctor_name })
-                        }
+                        } {...a11yLang()}
                       />
                       <IconButton
                         icon="pencil-outline"
                         size={18}
                         onPress={() => router.push({ pathname: '/appointment-form', params: { appointment: JSON.stringify(item) } })}
-                        accessibilityLabel={t('a11y.appointments.edit', { doctor: item.doctor_name })}
+                        accessibilityLabel={t('a11y.appointments.edit', { doctor: item.doctor_name })} {...a11yLang()}
                       />
                       <IconButton
                         icon={isExpanded ? "chevron-up" : "chevron-down"}
@@ -211,7 +211,7 @@ export default function AppointmentsScreen() {
                           isExpanded
                             ? t('a11y.common.collapseDetails')
                             : t('a11y.common.expandDetails')
-                        }
+                        } {...a11yLang()}
                         accessibilityState={{ expanded: isExpanded }}
                       />
                     </View>

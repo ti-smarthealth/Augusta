@@ -7,6 +7,7 @@ import { Button, Text, TextInput, useTheme } from 'react-native-paper';
 
 import { COLORS, LAYOUT, RADIUS, SHADOWS } from '../constants/theme';
 import { useAuth } from '../context/AuthContext';
+import { a11yLang } from '../utils/accessibility';
 
 export default function LoginScreen() {
   const theme = useTheme();
@@ -143,7 +144,7 @@ export default function LoginScreen() {
         <TextInput
           testID="login-identifier"
           label={t('login.identifierLabel')}
-          accessibilityLabel={t('login.identifierLabel')}
+          accessibilityLabel={t('login.identifierLabel')} {...a11yLang()}
           value={identifier}
           onChangeText={setIdentifier}
           mode="outlined"
@@ -158,7 +159,7 @@ export default function LoginScreen() {
         <TextInput
           testID="login-password"
           label={t('login.passwordLabel')}
-          accessibilityLabel={t('login.passwordLabel')}
+          accessibilityLabel={t('login.passwordLabel')} {...a11yLang()}
           value={password}
           onChangeText={setPassword}
           mode="outlined"

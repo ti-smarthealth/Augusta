@@ -3,6 +3,7 @@ import { useRouter } from 'expo-router';
 import { goBackOrHome } from '@/utils/navigation';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { a11yLang } from '@/utils/accessibility';
 import {
   ActivityIndicator,
   Alert,
@@ -119,7 +120,7 @@ export default function MedicationLibraryScreen() {
   return (
     <View style={GlobalStyles.container}>
       <Appbar.Header style={{ backgroundColor: COLORS.background }}>
-        <Appbar.BackAction accessibilityLabel={t('a11y.common.goBack')} onPress={() => goBackOrHome(router)} />
+        <Appbar.BackAction accessibilityLabel={t('a11y.common.goBack')} {...a11yLang()} onPress={() => goBackOrHome(router)} />
         <Appbar.Content title={t('medicationLibrary.title')} titleStyle={styles.headerTitle} />
         <ActiveProfileBadge />
       </Appbar.Header>
@@ -179,7 +180,7 @@ export default function MedicationLibraryScreen() {
       <FAB
         icon="plus"
         label={Platform.OS !== 'web' ? t('medicationLibrary.addMedicine') : undefined}
-        accessibilityLabel={t('medicationLibrary.addMedicine')}
+        accessibilityLabel={t('medicationLibrary.addMedicine')} {...a11yLang()}
         style={styles.fab}
         color="white"
         onPress={() => setVisible(true)}
@@ -193,7 +194,7 @@ export default function MedicationLibraryScreen() {
             <View style={styles.dialogForm}>
               <TextInput
                 label={t('medicationLibrary.nameLabel')}
-                accessibilityLabel={t('medicationLibrary.nameLabel')}
+                accessibilityLabel={t('medicationLibrary.nameLabel')} {...a11yLang()}
                 value={newName}
                 onChangeText={(val) => { setNewName(val); setFormError(false); }}
                 mode="outlined"
@@ -203,7 +204,7 @@ export default function MedicationLibraryScreen() {
               />
               <TextInput
                 label={t('medicationLibrary.dosagesLabel')}
-                accessibilityLabel={t('medicationLibrary.dosagesLabel')}
+                accessibilityLabel={t('medicationLibrary.dosagesLabel')} {...a11yLang()}
                 placeholder={t('medicationLibrary.dosagesPlaceholder')}
                 value={newDosage}
                 onChangeText={(val) => { setNewDosage(val); setFormError(false); }}

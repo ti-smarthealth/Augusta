@@ -12,6 +12,7 @@ import { Appbar, Avatar, Button, Dialog, Divider, List, Menu, Portal, Surface, T
 import ActiveProfileBadge from '../components/active-profile-badge';
 import PlatformDatePicker from '../components/platform-date-picker';
 import { useAuth } from '../context/AuthContext';
+import { a11yLang } from '@/utils/accessibility';
 import {
   DEFAULT_MEAL_TIMES,
   MEAL_LABEL_KEY,
@@ -378,7 +379,7 @@ export default function ProfileScreen() {
   return (
     <View style={{ flex: 1, backgroundColor: theme.colors.background }}>
       <Appbar.Header elevated style={{ backgroundColor: COLORS.background }}>
-        <Appbar.BackAction accessibilityLabel={t('a11y.common.goBack')} onPress={() => goBackOrHome(router)} />
+        <Appbar.BackAction accessibilityLabel={t('a11y.common.goBack')} {...a11yLang()} onPress={() => goBackOrHome(router)} />
         <Appbar.Content title={t('profile.title')} titleStyle={{ fontWeight: '800' }} />
         <ActiveProfileBadge />
       </Appbar.Header>
@@ -399,7 +400,7 @@ export default function ProfileScreen() {
             <Text style={{ fontSize: 12, marginBottom: 10, color: COLORS.slate }}>{t('profile.requestingAccess')}</Text>
             <TextInput
               label={t('profile.handshakeCodeLabel')}
-              accessibilityLabel={t('profile.handshakeCodeLabel')}
+              accessibilityLabel={t('profile.handshakeCodeLabel')} {...a11yLang()}
               placeholder={t('profile.handshakeCodePlaceholder')}
               mode="outlined"
               dense
@@ -503,7 +504,7 @@ export default function ProfileScreen() {
                 testID="profile-verify-email-code"
                 mode="outlined"
                 label={t('profile.emailVerifyCodeLabel')}
-                accessibilityLabel={t('profile.emailVerifyCodeLabel')}
+                accessibilityLabel={t('profile.emailVerifyCodeLabel')} {...a11yLang()}
                 value={verifyCode}
                 onChangeText={setVerifyCode}
                 keyboardType="number-pad"

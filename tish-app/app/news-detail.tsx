@@ -6,6 +6,7 @@ import { Appbar, IconButton, Surface, Text } from 'react-native-paper';
 
 import { useAuth } from '@/context/AuthContext';
 import { useTextToSpeech } from '@/hooks/use-text-to-speech';
+import { a11yLang } from '@/utils/accessibility';
 import {
   announcementLocaleFrom,
   resolveAnnouncements,
@@ -57,7 +58,7 @@ export default function NewsDetailScreen() {
   return (
     <View style={GlobalStyles.container}>
       <Appbar.Header style={{ backgroundColor: COLORS.surface }}>
-        <Appbar.BackAction accessibilityLabel={t('a11y.common.goBack')} onPress={() => goBackOrHome(router)} />
+        <Appbar.BackAction accessibilityLabel={t('a11y.common.goBack')} {...a11yLang()} onPress={() => goBackOrHome(router)} />
         <Appbar.Content title={t('news.title')} />
         {article && (
           <IconButton
@@ -68,7 +69,7 @@ export default function NewsDetailScreen() {
               speakingId === article.id
                 ? t('a11y.common.stopReading')
                 : t('a11y.news.readArticle')
-            }
+            } {...a11yLang()}
           />
         )}
       </Appbar.Header>

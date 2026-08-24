@@ -17,7 +17,7 @@ import PlatformDatePicker from '../components/platform-date-picker';
 import { COLORS, SHADOWS } from '../constants/theme';
 import { GlobalStyles } from '../styles/globalstyles';
 import { apiErrorMessage, describeApiFailure } from '@/utils/api-errors';
-import { heading } from '@/utils/accessibility';
+import { a11yLang, heading } from '@/utils/accessibility';
 
 interface AppointmentStatus { id: number; label: string; color: string; }
 
@@ -140,7 +140,7 @@ export default function AppointmentFormScreen() {
         dictatingField === fieldKey
           ? t('a11y.common.stopDictation')
           : t('a11y.common.startDictation')
-      }
+      } {...a11yLang()}
       accessibilityState={{ selected: dictatingField === fieldKey }}
       onPress={() => dictatingField === fieldKey ? stopDictation() : startDictation(fieldKey, value, onChangeText)}
     />
@@ -166,7 +166,7 @@ export default function AppointmentFormScreen() {
   return (
     <View style={GlobalStyles.container}>
       <Appbar.Header style={{ backgroundColor: COLORS.background }}>
-        <Appbar.BackAction accessibilityLabel={t('a11y.common.goBack')} onPress={() => goBackOrHome(router)} />
+        <Appbar.BackAction accessibilityLabel={t('a11y.common.goBack')} {...a11yLang()} onPress={() => goBackOrHome(router)} />
         <Appbar.Content title={isEdit ? t('appointmentForm.editTitle') : t('appointmentForm.newTitle')} titleStyle={styles.headerTitle} />
         <ActiveProfileBadge />
       </Appbar.Header>
@@ -177,7 +177,7 @@ export default function AppointmentFormScreen() {
         <View style={styles.fieldContainer}>
             <TextInput
                 label={t('appointmentForm.doctorLabel')}
-                accessibilityLabel={t('appointmentForm.doctorLabel')}
+                accessibilityLabel={t('appointmentForm.doctorLabel')} {...a11yLang()}
                 value={name}
                 onChangeText={(val) => { setName(val); setErrors({...errors, name: false}); }}
                 mode="outlined"
@@ -198,12 +198,12 @@ export default function AppointmentFormScreen() {
                 accessibilityLabel={t('a11y.common.changeDate', {
                     label: t('appointmentForm.dateLabel'),
                     value: date.toLocaleDateString(),
-                })}
+                })} {...a11yLang()}
             >
                 <View pointerEvents="none">
                     <TextInput
                         label={t('appointmentForm.dateLabel')}
-                        accessibilityLabel={t('appointmentForm.dateLabel')}
+                        accessibilityLabel={t('appointmentForm.dateLabel')} {...a11yLang()}
                         value={date.toLocaleDateString()}
                         mode="outlined" 
                         style={styles.input} 
@@ -226,7 +226,7 @@ export default function AppointmentFormScreen() {
         <View style={styles.fieldContainer}>
             <TextInput
                 label={t('appointmentForm.reasonLabel')}
-                accessibilityLabel={t('appointmentForm.reasonLabel')}
+                accessibilityLabel={t('appointmentForm.reasonLabel')} {...a11yLang()}
                 value={desc}
                 onChangeText={handleDescChange}
                 mode="outlined"
@@ -245,7 +245,7 @@ export default function AppointmentFormScreen() {
         <View style={styles.fieldContainer}>
             <TextInput
                 label={t('appointmentForm.hospitalLabel')}
-                accessibilityLabel={t('appointmentForm.hospitalLabel')}
+                accessibilityLabel={t('appointmentForm.hospitalLabel')} {...a11yLang()}
                 value={hospital}
                 onChangeText={(val) => { setHospital(val); setErrors({...errors, hospital: false}); }}
                 mode="outlined"
@@ -259,7 +259,7 @@ export default function AppointmentFormScreen() {
         <View style={styles.fieldContainer}>
             <TextInput
                 label={t('appointmentForm.departmentLabel')}
-                accessibilityLabel={t('appointmentForm.departmentLabel')}
+                accessibilityLabel={t('appointmentForm.departmentLabel')} {...a11yLang()}
                 value={department}
                 onChangeText={(val) => { setDepartment(val); setErrors({...errors, department: false}); }}
                 mode="outlined"
@@ -272,14 +272,14 @@ export default function AppointmentFormScreen() {
 
         {/* Row needs to be handled carefully to keep height same as single fields */}
         <View style={[styles.row, { marginBottom: 12 }]}>
-          <TextInput label={t('appointmentForm.roomLabel')} accessibilityLabel={t('appointmentForm.roomLabel')} value={roomNumber} onChangeText={setRoomNumber} mode="outlined" style={[styles.input, { flex: 1, marginRight: 10 }]} disabled={isSaving} />
-          <TextInput label={t('appointmentForm.apptNumberLabel')} accessibilityLabel={t('appointmentForm.apptNumberLabel')} value={appointmentNumber} onChangeText={setAppointmentNumber} mode="outlined" style={[styles.input, { flex: 1 }]} disabled={isSaving} />
+          <TextInput label={t('appointmentForm.roomLabel')} accessibilityLabel={t('appointmentForm.roomLabel')} {...a11yLang()} value={roomNumber} onChangeText={setRoomNumber} mode="outlined" style={[styles.input, { flex: 1, marginRight: 10 }]} disabled={isSaving} />
+          <TextInput label={t('appointmentForm.apptNumberLabel')} accessibilityLabel={t('appointmentForm.apptNumberLabel')} {...a11yLang()} value={appointmentNumber} onChangeText={setAppointmentNumber} mode="outlined" style={[styles.input, { flex: 1 }]} disabled={isSaving} />
         </View>
 
         <View style={styles.fieldContainer}>
             <TextInput
                 label={t('appointmentForm.detailsLabel')}
-                accessibilityLabel={t('appointmentForm.detailsLabel')}
+                accessibilityLabel={t('appointmentForm.detailsLabel')} {...a11yLang()}
                 value={details}
                 onChangeText={setDetails}
                 mode="outlined"

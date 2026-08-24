@@ -97,6 +97,10 @@
     },
     "updates": {
       "url": "https://u.expo.dev/a11811b1-26d3-41e6-95ba-06330cec94f0"
+    },
+    "locales": {
+      "en": "./locales/ios/en.json",
+      "zh-Hant": "./locales/ios/zh-Hant.json"
     }
   }
 }

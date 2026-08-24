@@ -39,7 +39,7 @@ import { snoozeMinutesFor } from '@/utils/alarm-settings';
 import { scheduleMedicationNotifications } from '@/utils/notification-helper';
 import ActiveProfileBadge from '@/components/active-profile-badge';
 import { useAuth } from '@/context/AuthContext';
-import { heading } from '@/utils/accessibility';
+import { a11yLang, heading } from '@/utils/accessibility';
 
 
 type MealTiming = 'before' | 'after' | 'none';
@@ -390,7 +390,7 @@ export default function MedicationReminderForm() {
     return (
         <View style={GlobalStyles.container}>
             <Appbar.Header style={{ backgroundColor: COLORS.background }}>
-                <Appbar.BackAction accessibilityLabel={t('a11y.common.goBack')} onPress={() => goBackOrHome(router)} disabled={isSaving} />
+                <Appbar.BackAction accessibilityLabel={t('a11y.common.goBack')} {...a11yLang()} onPress={() => goBackOrHome(router)} disabled={isSaving} />
                 <Appbar.Content title={isEdit ? t('medicationReminderForm.editTitle') : t('medicationReminderForm.newTitle')} titleStyle={styles.headerTitle} />
                 <ActiveProfileBadge />
             </Appbar.Header>
@@ -432,7 +432,7 @@ export default function MedicationReminderForm() {
                                 );
                             })}
                         </View>
-                        <TextInput label={t('medicationReminderForm.customDosage')} accessibilityLabel={t('medicationReminderForm.customDosage')} value={customDosage} onChangeText={(val) => { setCustomDosage(val); setDosage(''); setErrors({ ...errors, dosage: false }); }} mode="outlined" style={styles.input} dense />
+                        <TextInput label={t('medicationReminderForm.customDosage')} accessibilityLabel={t('medicationReminderForm.customDosage')} {...a11yLang()} value={customDosage} onChangeText={(val) => { setCustomDosage(val); setDosage(''); setErrors({ ...errors, dosage: false }); }} mode="outlined" style={styles.input} dense />
                         <HelperText type="error" visible={errors.dosage} style={styles.helper}>{t('medicationReminderForm.doseRequired')}</HelperText>
                     </View>
                 )}
@@ -484,7 +484,7 @@ export default function MedicationReminderForm() {
                                 accessibilityRole="checkbox"
                                 accessibilityLabel={t('a11y.medicationReminder.enableAlarm', {
                                     label: alarmLabels[i] || t('medications.alarmDefaultLabel', { number: i + 1 }),
-                                })}
+                                })} {...a11yLang()}
                                 accessibilityState={{ checked: activeAlarms[i] }}
                                 onPress={() => {
                                     const next = [...activeAlarms]; next[i] = !next[i]; setActiveAlarms(next);
@@ -497,7 +497,7 @@ export default function MedicationReminderForm() {
                                 onChangeText={(val) => { const n = [...alarmLabels]; n[i] = val; setAlarmLabels(n); }}
                                 editable={activeAlarms[i]}
                                 placeholder={t('medications.alarmDefaultLabel', { number: i + 1 })}
-                                accessibilityLabel={t('medications.alarmDefaultLabel', { number: i + 1 })}
+                                accessibilityLabel={t('medications.alarmDefaultLabel', { number: i + 1 })} {...a11yLang()}
                                 dense
                                 underlineColor="transparent"
                                 activeUnderlineColor={COLORS.primary}
@@ -515,7 +515,7 @@ export default function MedicationReminderForm() {
                                         accessibilityLabel={t('a11y.medicationReminder.changeAlarmTime', {
                                             label: alarmLabels[i] || t('medications.alarmDefaultLabel', { number: i + 1 }),
                                             time: alarmTimes[i].toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false }),
-                                        })}
+                                        })} {...a11yLang()}
                                         accessibilityState={{ disabled: !activeAlarms[i] }}
                                     >
                                         <Text style={styles.timeText}>{alarmTimes[i].toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}</Text>
@@ -677,7 +677,7 @@ export default function MedicationReminderForm() {
                             {useCustomDelay ? (
                                 <TextInput
                                     label={t('medicationReminderForm.escalationDelayCustomLabel')}
-                                    accessibilityLabel={t('medicationReminderForm.escalationDelayCustomLabel')}
+                                    accessibilityLabel={t('medicationReminderForm.escalationDelayCustomLabel')} {...a11yLang()}
                                     value={customDelayText}
                                     onChangeText={(val) => { setCustomDelayText(val); setErrors({ ...errors, delay: false }); }}
                                     keyboardType="numeric"
@@ -747,7 +747,7 @@ export default function MedicationReminderForm() {
                 {/* 5. FREQUENCY */}
                 <View style={[styles.fieldContainer, { marginTop: 20 }]}>
                     <Text style={styles.sectionLabel}>{t('medicationReminderForm.repeatFrequency')}</Text>
-                    <TextInput label={t('medicationReminderForm.repeatEveryDays')} accessibilityLabel={t('medicationReminderForm.repeatEveryDays')} value={frequencyDays} onChangeText={setFrequencyDays} keyboardType="numeric" mode="outlined" style={styles.input} left={<TextInput.Icon aria-hidden tabIndex={-1} icon="calendar-refresh" color={COLORS.primary} />} />
+                    <TextInput label={t('medicationReminderForm.repeatEveryDays')} accessibilityLabel={t('medicationReminderForm.repeatEveryDays')} {...a11yLang()} value={frequencyDays} onChangeText={setFrequencyDays} keyboardType="numeric" mode="outlined" style={styles.input} left={<TextInput.Icon aria-hidden tabIndex={-1} icon="calendar-refresh" color={COLORS.primary} />} />
                     <HelperText type="info" visible={false} style={styles.helper}>{null}</HelperText>
                 </View>
 
