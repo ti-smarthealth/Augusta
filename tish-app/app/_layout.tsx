@@ -14,9 +14,16 @@ import { initI18n } from '../i18n';
 import { DEFAULT_SNOOZE_MINUTES, snoozeMinutesFor } from '../utils/alarm-settings';
 import { cancelAlarmBurst, dismissPresentedAlarms, notificationPermissionRequest, rescheduleNextOccurrence, setupNotificationChannels } from '../utils/notification-helper';
 import { registerPushToken } from '../utils/push-token';
+import { installCrashReporter } from '../utils/crash-reporting';
 import { noteNotificationOpen, trackAppState, trackLaunch } from '../utils/telemetry';
 
 // --- 1. CONFIGURATION ---
+// At module scope, before the first render, so a crash anywhere — including
+// the first frame — leaves an `app.crash` event behind. See crash-reporting.ts
+// for why this exists; the short version is that a TestFlight crash log
+// carries no JavaScript stack, and once is enough.
+installCrashReporter();
+
 LogBox.ignoreLogs(['Unknown event handler property', 'onResponderTerminate', 'Invalid DOM property', 'transform-origin']);
 
 Amplify.configure({

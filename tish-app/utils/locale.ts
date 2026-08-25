@@ -18,7 +18,35 @@ import i18next from '../i18n';
  * Before `initI18n` has run this returns undefined, which the `toLocale*`
  * family treats as "use the runtime default" — the behaviour these calls had
  * before. So an early call degrades to the old result rather than throwing.
+ *
+ * **The tag is probed against the runtime's own formatter before being handed
+ * out.** Hermes's Intl is not V8's: it is a separate implementation, backed by
+ * platform APIs on iOS, with a documented history of gaps — locales parsed as
+ * `und`, methods going missing from a release, formatter crashes on newer iOS.
+ * Every screen in this app formats a date through this function, so a tag the
+ * engine rejects would turn one Intl gap into an app-wide crash on exactly one
+ * platform. The probe runs the three formatter shapes the app actually uses,
+ * once per language, and on any throw falls back to `undefined` — device-locale
+ * formatting, the pre-migration behaviour: cosmetically wrong, functionally
+ * alive.
  */
-export function appLocale(): string {
-  return i18next.language;
+const probed = new Map<string, string | undefined>();
+
+export function appLocale(): string | undefined {
+  const lang = i18next.language;
+  if (!lang) return undefined;
+  if (!probed.has(lang)) {
+    let usable: string | undefined = lang;
+    try {
+      const d = new Date(0);
+      d.toLocaleDateString(lang);
+      d.toLocaleDateString(lang, { weekday: 'long', month: 'long', day: 'numeric' });
+      d.toLocaleTimeString(lang, { hour: '2-digit', minute: '2-digit', hour12: false });
+      d.toLocaleString(lang, { month: 'short' });
+    } catch {
+      usable = undefined;
+    }
+    probed.set(lang, usable);
+  }
+  return probed.get(lang);
 }
