@@ -20,7 +20,11 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
+          # eas-cli is installed at `latest` below, and 22.4.0 pulls
+          # @oclif/plugin-autocomplete, which requires Node >= 22. The expo
+          # action installs with yarn, which enforces engines, so Node 20
+          # fails the job before it ever reaches EAS.
+          node-version: 22
           cache: npm
           cache-dependency-path: tish-app/package-lock.json
 
