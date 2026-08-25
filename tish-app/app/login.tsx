@@ -5,9 +5,11 @@ import { useTranslation } from 'react-i18next';
 import { Alert, Image, Platform, ScrollView, StyleSheet, View } from 'react-native';
 import { Button, Text, TextInput, useTheme } from 'react-native-paper';
 
+import LanguageToggle from '../components/language-toggle';
 import { COLORS, LAYOUT, RADIUS, SHADOWS } from '../constants/theme';
 import { useAuth } from '../context/AuthContext';
 import { a11yLang } from '../utils/accessibility';
+import { autofilledDomValue } from '../utils/autofill';
 
 export default function LoginScreen() {
   const theme = useTheme();
@@ -20,18 +22,24 @@ export default function LoginScreen() {
   const [password, setPassword] = useState('');
 
   const handleLogin = async () => {
-    if (!identifier.trim() || !password) {
+    // Browser autofill fills the DOM without firing onChangeText, so on web
+    // the state can be empty while the form visibly holds credentials — and
+    // pressing this button may be the user's very first gesture on the page.
+    const username = identifier.trim() || autofilledDomValue('login-identifier').trim();
+    const pass = password || autofilledDomValue('login-password');
+
+    if (!username || !pass) {
       notifyUser(t('common.error'), t('login.fillBothFields'));
       return;
     }
 
     try {
       setLoading(true);
-      
+
       // 1. Authenticate with Cognito via Amplify
       const { isSignedIn, nextStep } = await signIn({
-        username: identifier.trim(),
-        password: password,
+        username,
+        password: pass,
       });
 
       if (isSignedIn) {
@@ -45,7 +53,7 @@ export default function LoginScreen() {
         // Not signed in, and Cognito wants something more. Every branch below
         // must say *something*: an unhandled step used to leave the spinner
         // simply stopping, with no indication that anything was required.
-        handleNextStep(nextStep.signInStep, identifier.trim());
+        handleNextStep(nextStep.signInStep, username);
       }
     } catch (error: any) {
       console.error("Login Error:", error);
@@ -125,6 +133,7 @@ export default function LoginScreen() {
   };
 
   return (
+    <View style={styles.screen}>
     <ScrollView style={styles.page} contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
       <View style={styles.brandSection}>
         <View style={styles.logoCircle}>
@@ -141,34 +150,42 @@ export default function LoginScreen() {
       </View>
 
       <View style={styles.formCard}>
-        <TextInput
-          testID="login-identifier"
-          label={t('login.identifierLabel')}
-          accessibilityLabel={t('login.identifierLabel')} {...a11yLang()}
-          value={identifier}
-          onChangeText={setIdentifier}
-          mode="outlined"
-          outlineColor={COLORS.background}
-          activeOutlineColor={COLORS.primary}
-          style={styles.input}
-          autoCapitalize="none"
-          keyboardType="email-address"
-          left={<TextInput.Icon icon="account" aria-hidden tabIndex={-1} />}
-        />
+        {/* Static labels above the fields, not Paper's floating `label`, the
+            same pattern signup uses. Browser autofill fills the DOM without
+            telling React, and a floating label that believes the field is
+            empty stays put — drawn straight over the autofilled text. */}
+        <View>
+          <Text style={styles.fieldLabel}>{t('login.identifierLabel')}</Text>
+          <TextInput
+            testID="login-identifier"
+            accessibilityLabel={t('login.identifierLabel')} {...a11yLang()}
+            value={identifier}
+            onChangeText={setIdentifier}
+            mode="outlined"
+            outlineColor={COLORS.background}
+            activeOutlineColor={COLORS.primary}
+            style={styles.input}
+            autoCapitalize="none"
+            keyboardType="email-address"
+            left={<TextInput.Icon icon="account" aria-hidden tabIndex={-1} />}
+          />
+        </View>
 
-        <TextInput
-          testID="login-password"
-          label={t('login.passwordLabel')}
-          accessibilityLabel={t('login.passwordLabel')} {...a11yLang()}
-          value={password}
-          onChangeText={setPassword}
-          mode="outlined"
-          outlineColor={COLORS.background}
-          activeOutlineColor={COLORS.primary}
-          style={styles.input} 
-          secureTextEntry 
-          left={<TextInput.Icon icon="lock" aria-hidden tabIndex={-1} />}
-        />
+        <View>
+          <Text style={styles.fieldLabel}>{t('login.passwordLabel')}</Text>
+          <TextInput
+            testID="login-password"
+            accessibilityLabel={t('login.passwordLabel')} {...a11yLang()}
+            value={password}
+            onChangeText={setPassword}
+            mode="outlined"
+            outlineColor={COLORS.background}
+            activeOutlineColor={COLORS.primary}
+            style={styles.input}
+            secureTextEntry
+            left={<TextInput.Icon icon="lock" aria-hidden tabIndex={-1} />}
+          />
+        </View>
 
         <Button
           testID="login-submit"
@@ -207,10 +224,13 @@ export default function LoginScreen() {
         {t('login.registerHere')}
       </Button>
     </ScrollView>
+    <LanguageToggle floating />
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: COLORS.background },
   // Background lives on the ScrollView itself so that on web, where the form
   // column is clamped and centered, the gutters keep the page color.
   page: { backgroundColor: COLORS.background },
@@ -259,9 +279,11 @@ const styles = StyleSheet.create({
     ...SHADOWS.soft,
     gap: 15
   },
-  input: { 
+  input: {
     backgroundColor: 'white',
   },
+  // Same shape as signup's field labels, so the auth screens read as one form.
+  fieldLabel: { fontSize: 13, fontWeight: '700', color: COLORS.slate, marginBottom: 6, marginLeft: 4 },
   button: { 
     marginTop: 10, 
     borderRadius: RADIUS.lg,

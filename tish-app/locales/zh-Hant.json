@@ -448,7 +448,8 @@
       "collapseDetails": "隱藏詳細資料",
       "changeDate": "{{label}}，目前為 {{value}}。開啟日期選擇器",
       "startDictation": "開始語音輸入",
-      "stopDictation": "停止語音輸入"
+      "stopDictation": "停止語音輸入",
+      "switchLanguage": "將語言切換為 {{language}}"
     },
     "home": {
       "openProfile": "開啟個人資料",

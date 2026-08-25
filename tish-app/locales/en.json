@@ -448,7 +448,8 @@
       "collapseDetails": "Hide details",
       "changeDate": "{{label}}, currently {{value}}. Opens a date picker",
       "startDictation": "Start voice dictation",
-      "stopDictation": "Stop voice dictation"
+      "stopDictation": "Stop voice dictation",
+      "switchLanguage": "Switch language to {{language}}"
     },
     "home": {
       "openProfile": "Open your profile",

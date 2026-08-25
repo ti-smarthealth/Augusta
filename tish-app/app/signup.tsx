@@ -24,6 +24,7 @@ import {
   Text,
   TextInput
 } from 'react-native-paper';
+import LanguageToggle from '../components/language-toggle';
 import PlatformDatePicker from '../components/platform-date-picker';
 import { DEFAULT_VERIFICATION_MEDIUM, SMS_VERIFICATION_ENABLED } from '../constants/config';
 import { GeneralOption } from '../constants/interfaces';
@@ -537,6 +538,7 @@ export default function SignupScreen() {
         <Button mode="text" onPress={() => router.replace('/login')} disabled={loading} textColor={COLORS.slate}>
           {t('signup.backToSignIn')}
         </Button>
+        <LanguageToggle floating />
       </View>
     );
   }
@@ -546,6 +548,7 @@ export default function SignupScreen() {
       <View style={GlobalStyles.container}>
         <Appbar.Header style={{ backgroundColor: COLORS.background }}>
           <Appbar.Content title={t('signup.completeYourProfile')} titleStyle={{ fontWeight: '800' }} />
+          <LanguageToggle style={styles.appbarLangToggle} />
         </Appbar.Header>
 
         <ScrollView contentContainerStyle={GlobalStyles.scrollContent} showsVerticalScrollIndicator={true} keyboardShouldPersistTaps="handled">
@@ -646,6 +649,7 @@ export default function SignupScreen() {
       <Appbar.Header style={{ backgroundColor: COLORS.background }}>
         <Appbar.BackAction accessibilityLabel={t('a11y.common.goBack')} {...a11yLang()} onPress={() => goBackOrHome(router, '/login')} />
         <Appbar.Content title={t('signup.accountRegistration')} titleStyle={{ fontWeight: '800' }} />
+        <LanguageToggle style={styles.appbarLangToggle} />
       </Appbar.Header>
 
       <ScrollView contentContainerStyle={GlobalStyles.scrollContent} showsVerticalScrollIndicator={true} keyboardShouldPersistTaps="handled">
@@ -832,6 +836,8 @@ export default function SignupScreen() {
 
 const styles = StyleSheet.create({
   centeredContent: { justifyContent: 'center', alignItems: 'center', padding: 30 },
+  // Sits after Appbar.Content, which flexes — this just keeps it off the edge.
+  appbarLangToggle: { marginRight: 12 },
   pageTitle: { fontSize: 28, fontWeight: '800', color: COLORS.ink, marginBottom: 24 },
   fieldContainer: { marginBottom: 12 },
   fieldLabel: { fontSize: 13, fontWeight: '700', color: COLORS.slate, marginBottom: 6, marginLeft: 4 },

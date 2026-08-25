@@ -6,8 +6,10 @@ import { useTranslation } from 'react-i18next';
 import { Alert, Platform, StyleSheet, View } from 'react-native';
 import { Button, Text, TextInput } from 'react-native-paper';
 
+import LanguageToggle from '../components/language-toggle';
 import { COLORS, LAYOUT, RADIUS, SHADOWS } from '../constants/theme';
 import { GlobalStyles } from '../styles/globalstyles';
+import { autofilledDomValue } from '../utils/autofill';
 import { a11yLang } from '../utils/accessibility';
 
 // Mirrors AuthDeliveryMedium from aws-amplify/auth, same as signup.tsx.
@@ -78,11 +80,15 @@ export default function ForgotPasswordScreen() {
 
   // --- STEP 1: ask Cognito to send a code ---
   const handleSendCode = async () => {
-    const cleanId = identifier.trim();
+    // Browser autofill fills the DOM without firing onChangeText, so the field
+    // can visibly hold an identifier the state doesn't know about. Synced back
+    // into state because the confirm and resend steps read `identifier` too.
+    const cleanId = identifier.trim() || autofilledDomValue('forgot-identifier').trim();
     if (!cleanId) {
       setError(t('forgotPassword.enterIdentifier'));
       return;
     }
+    if (cleanId !== identifier.trim()) setIdentifier(cleanId);
 
     setLoading(true);
     setError('');
@@ -197,29 +203,37 @@ export default function ForgotPasswordScreen() {
           style={styles.codeInput}
         />
 
-        <TextInput
-          mode="outlined"
-          label={t('forgotPassword.newPasswordLabel')}
-          accessibilityLabel={t('forgotPassword.newPasswordLabel')} {...a11yLang()}
-          value={newPassword}
-          onChangeText={v => { setNewPassword(v); if (error) setError(''); }}
-          secureTextEntry
-          autoCapitalize="none"
-          style={styles.input}
-          left={<TextInput.Icon aria-hidden tabIndex={-1} icon="lock-reset" />}
-        />
+        {/* Static labels above the fields, not Paper's floating `label` —
+            browser autofill fills the DOM without telling React, and a
+            floating label that believes the field is empty is drawn straight
+            over the autofilled text. Same pattern as signup and login. */}
+        <View style={styles.fieldGroup}>
+          <Text style={styles.fieldLabel}>{t('forgotPassword.newPasswordLabel')}</Text>
+          <TextInput
+            mode="outlined"
+            accessibilityLabel={t('forgotPassword.newPasswordLabel')} {...a11yLang()}
+            value={newPassword}
+            onChangeText={v => { setNewPassword(v); if (error) setError(''); }}
+            secureTextEntry
+            autoCapitalize="none"
+            style={styles.input}
+            left={<TextInput.Icon aria-hidden tabIndex={-1} icon="lock-reset" />}
+          />
+        </View>
 
-        <TextInput
-          mode="outlined"
-          label={t('forgotPassword.confirmPasswordLabel')}
-          accessibilityLabel={t('forgotPassword.confirmPasswordLabel')} {...a11yLang()}
-          value={confirmPassword}
-          onChangeText={v => { setConfirmPassword(v); if (error) setError(''); }}
-          secureTextEntry
-          autoCapitalize="none"
-          style={styles.input}
-          left={<TextInput.Icon aria-hidden tabIndex={-1} icon="lock-check" />}
-        />
+        <View style={styles.fieldGroup}>
+          <Text style={styles.fieldLabel}>{t('forgotPassword.confirmPasswordLabel')}</Text>
+          <TextInput
+            mode="outlined"
+            accessibilityLabel={t('forgotPassword.confirmPasswordLabel')} {...a11yLang()}
+            value={confirmPassword}
+            onChangeText={v => { setConfirmPassword(v); if (error) setError(''); }}
+            secureTextEntry
+            autoCapitalize="none"
+            style={styles.input}
+            left={<TextInput.Icon aria-hidden tabIndex={-1} icon="lock-check" />}
+          />
+        </View>
 
         {!!error && <Text style={styles.errorText}>{error}</Text>}
         {!!note && <Text style={styles.noteText}>{note}</Text>}
@@ -247,6 +261,7 @@ export default function ForgotPasswordScreen() {
         >
           {t('forgotPassword.startOver')}
         </Button>
+        <LanguageToggle floating />
       </View>
     );
   }
@@ -266,18 +281,21 @@ export default function ForgotPasswordScreen() {
         <Text style={styles.stepSubtitle}>{t('forgotPassword.subtitle')}</Text>
       )}
 
-      <TextInput
-        mode="outlined"
-        label={t('forgotPassword.identifierLabel')}
-        accessibilityLabel={t('forgotPassword.identifierLabel')} {...a11yLang()}
-        value={identifier}
-        onChangeText={v => { setIdentifier(v); if (error) setError(''); }}
-        autoCapitalize="none"
-        keyboardType="email-address"
-        error={!!error}
-        style={styles.input}
-        left={<TextInput.Icon aria-hidden tabIndex={-1} icon="account" />}
-      />
+      <View style={styles.fieldGroup}>
+        <Text style={styles.fieldLabel}>{t('forgotPassword.identifierLabel')}</Text>
+        <TextInput
+          testID="forgot-identifier"
+          mode="outlined"
+          accessibilityLabel={t('forgotPassword.identifierLabel')} {...a11yLang()}
+          value={identifier}
+          onChangeText={v => { setIdentifier(v); if (error) setError(''); }}
+          autoCapitalize="none"
+          keyboardType="email-address"
+          error={!!error}
+          style={styles.input}
+          left={<TextInput.Icon aria-hidden tabIndex={-1} icon="account" />}
+        />
+      </View>
 
       {!!error && <Text style={styles.errorText}>{error}</Text>}
 
@@ -300,6 +318,7 @@ export default function ForgotPasswordScreen() {
       >
         {t('forgotPassword.backToSignIn')}
       </Button>
+      <LanguageToggle floating />
     </View>
   );
 }
@@ -325,6 +344,9 @@ const styles = StyleSheet.create({
     ...authClamp,
   },
   spamHint: { textAlign: 'center', color: COLORS.slate, fontSize: 13, marginBottom: 16, lineHeight: 18, ...authClamp },
+  // Left-aligned column for a label-above-input pair; the parent centers it.
+  fieldGroup: { width: '100%', ...authClamp },
+  fieldLabel: { fontSize: 13, fontWeight: '700', color: COLORS.slate, marginBottom: 6, marginLeft: 4, textAlign: 'left' },
   input: { backgroundColor: 'white', width: '100%', marginBottom: 12, ...authClamp },
   codeInput: {
     backgroundColor: 'white',
