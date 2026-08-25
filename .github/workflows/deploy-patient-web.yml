@@ -1,0 +1,100 @@
+name: Deploy patient web app
+
+# Builds the Expo app for web and ships the static export to Amplify Hosting —
+# the same shape as deploy-dashboard.yml, and deliberately so: the Amplify app
+# is NOT connected to this GitHub repo, the deploy rides the same OIDC role,
+# and all the deployables keep one auth story and one place to look.
+#
+# This is the "Patient web site" node from docs/architecture — the app's
+# existing web build, hosted, rather than a separate codebase. It serves the
+# same API with the same Cognito pool; only the alarm engine is native-only,
+# and the web build already degrades around it.
+#
+# tish-app/backend/** is excluded: that is the API Lambda with its own
+# workflow (deploy-backend.yml). A backend-only change must not pay for a
+# Metro bundle, and runner minutes are metered.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'tish-app/**'
+      - '!tish-app/backend/**'
+      - '!tish-app/.maestro/**'
+      - '!tish-app/.eas/**'
+      - '.github/workflows/deploy-patient-web.yml'
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: tish-app/package-lock.json
+
+      - name: Install dependencies
+        working-directory: tish-app
+        run: npm ci
+
+      - name: Typecheck
+        working-directory: tish-app
+        # The deploy gate, same as the dashboard's. This also catches a t() key
+        # missing from both locale files, since t() is typed against the
+        # generated key union.
+        run: npx tsc --noEmit
+
+      - name: Build web export
+        working-directory: tish-app
+        # `output: "static"` in app.json — per-route HTML plus the client
+        # bundle. No env vars: API_BASE_URL is compiled in from
+        # constants/config.ts, and MOCK requires __DEV__, which a production
+        # export sets false, so fixture mode cannot ship from here.
+        run: npx expo export --platform web
+
+      - name: Package build output
+        working-directory: tish-app/dist
+        run: zip -r ../../patient-web-dist.zip .
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          # Amplify Hosting has no endpoint in ap-east-2, so this app lives in
+          # ap-northeast-2 beside the dashboard's while everything else stays
+          # in Taipei.
+          aws-region: ${{ vars.AMPLIFY_REGION }}
+
+      - name: Deploy to Amplify Hosting
+        run: |
+          set -euo pipefail
+          deployment=$(aws amplify create-deployment \
+            --app-id "${{ vars.PATIENT_WEB_AMPLIFY_APP_ID }}" --branch-name main)
+          job_id=$(echo "$deployment" | jq -r '.jobId')
+          upload_url=$(echo "$deployment" | jq -r '.zipUploadUrl')
+
+          curl -sSf -X PUT --upload-file patient-web-dist.zip "$upload_url"
+
+          aws amplify start-deployment \
+            --app-id "${{ vars.PATIENT_WEB_AMPLIFY_APP_ID }}" --branch-name main --job-id "$job_id"
+
+          echo "Waiting for job $job_id..."
+          for _ in $(seq 1 60); do
+            status=$(aws amplify get-job --app-id "${{ vars.PATIENT_WEB_AMPLIFY_APP_ID }}" \
+              --branch-name main --job-id "$job_id" --query 'job.summary.status' --output text)
+            echo "  status=$status"
+            case "$status" in
+              SUCCEED) echo "Deployed."; exit 0 ;;
+              FAILED|CANCELLED) echo "::error::Amplify job $job_id ended as $status"; exit 1 ;;
+            esac
+            sleep 5
+          done
+          echo "::error::Timed out waiting for Amplify job $job_id"
+          exit 1
