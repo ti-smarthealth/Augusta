@@ -1,11 +1,12 @@
 import { useQuery } from "@tanstack/react-query"
-import { AlertTriangle, BellOff, CircleCheck, CircleHelp } from "lucide-react"
+import { AlertTriangle, BellOff, Bug, ChevronDown, ChevronRight, CircleCheck, CircleHelp } from "lucide-react"
+import { useState } from "react"
 
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useApi } from "@/lib/api"
-import type { Alarm, AlarmState } from "@/lib/types"
+import type { Alarm, AlarmState, CrashSummary } from "@/lib/types"
 
 /**
  * Operational health, read from CloudWatch.
@@ -109,9 +110,116 @@ export function HealthPage() {
               </Card>
             ) : null}
           </div>
+
+          <CrashesSection />
         </>
       ) : null}
     </div>
+  )
+}
+
+/**
+ * App crashes over the rollup's trailing window (migration 013).
+ *
+ * This exists because a build-12 crash had to be diagnosed from a TestFlight
+ * log carrying no JavaScript stack at all. The client's global handler now
+ * records `app.crash` through the telemetry pipeline; the nightly rollup lands
+ * them in Postgres; this reads Postgres — no Athena on the request path, same
+ * as every chart on the adherence pages.
+ *
+ * Freshness is the rollup's, not the page's: nightly, plus manual runs. The
+ * raw events are in Athena within minutes for anyone who cannot wait.
+ */
+function CrashesSection() {
+  const api = useApi()
+  const query = useQuery({ queryKey: ["crashes"], queryFn: api.getCrashes })
+
+  const crashes = query.data?.crashes ?? []
+  const total = crashes.reduce((n, c) => n + c.crashes, 0)
+
+  return (
+    <>
+      <Card className={total > 0 ? "border-destructive" : undefined}>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Bug className={`h-5 w-5 ${total > 0 ? "text-destructive" : ""}`} />
+            {query.isPending
+              ? "App crashes"
+              : total > 0
+                ? `${total} crash${total === 1 ? "" : "es"} in ${query.data?.windowDays ?? 14} days`
+                : "No crashes recorded"}
+          </CardTitle>
+          <CardDescription>
+            From the nightly telemetry rollup — updated once a day, so today's crashes appear
+            tomorrow. Raw events reach Athena within minutes; production stacks are minified.
+          </CardDescription>
+        </CardHeader>
+      </Card>
+
+      {query.isPending ? <Skeleton className="h-24 w-full" /> : null}
+      {query.error ? (
+        <Card>
+          <CardContent className="p-6 text-sm text-destructive">
+            Couldn't read crashes: {(query.error as Error).message}
+          </CardContent>
+        </Card>
+      ) : null}
+
+      <div className="space-y-3">
+        {crashes.map((crash) => (
+          <CrashRow key={crash.fingerprint} crash={crash} />
+        ))}
+      </div>
+    </>
+  )
+}
+
+function CrashRow({ crash }: { crash: CrashSummary }) {
+  const [open, setOpen] = useState(false)
+  const Chevron = open ? ChevronDown : ChevronRight
+
+  return (
+    <Card className={crash.fatal ? "border-destructive" : undefined}>
+      <CardContent className="p-4">
+        <button
+          type="button"
+          className="flex w-full flex-wrap items-start gap-4 text-left"
+          onClick={() => setOpen((v) => !v)}
+          disabled={!crash.sample_stack}
+          aria-expanded={open}
+        >
+          <Chevron className={`mt-1 h-4 w-4 shrink-0 ${crash.sample_stack ? "" : "opacity-30"}`} />
+
+          <div className="min-w-0 flex-1 space-y-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="break-all font-mono text-sm font-medium">{crash.message}</span>
+              <Badge variant={crash.fatal ? "destructive" : "outline"}>
+                {crash.fatal ? "fatal" : "handled"}
+              </Badge>
+              {crash.platform ? <Badge variant="outline">{crash.platform}</Badge> : null}
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {crash.crashes} occurrence{crash.crashes === 1 ? "" : "s"}
+            </p>
+          </div>
+
+          {crash.last_seen_at ? (
+            <div className="text-right text-xs text-muted-foreground">
+              <div>last seen</div>
+              <div className="tabular-nums">
+                {new Date(crash.last_seen_at).toLocaleString("en-GB", { timeZone: "Asia/Taipei" })}
+              </div>
+            </div>
+          ) : null}
+        </button>
+
+        {open && crash.sample_stack ? (
+          <pre className="mt-3 overflow-x-auto rounded-md bg-muted p-3 text-xs leading-relaxed">
+            {crash.sample_stack}
+          </pre>
+        ) : null}
+      </CardContent>
+    </Card>
   )
 }
 

@@ -745,6 +745,29 @@ test('GET /daily-opens reads the rollup and never calls Athena', async () => {
   assert.match(text, /FROM telemetry_daily_opens/);
 });
 
+
+test('GET /crashes aggregates the crash rollup per fingerprint', async () => {
+  let text;
+  _setPoolForTests(makePool([
+    { match: /telemetry_crashes/, result: (t) => { text = t; return { rows: [{ fingerprint: 'abc', message: 'boom', platform: 'ios', fatal: true, crashes: 4, last_seen_at: '2026-08-25T15:05:33Z', sample_stack: 's' }] }; } },
+  ]));
+  const res = await handler(httpEvent({ path: '/crashes' }));
+  assert.equal(res.statusCode, 200);
+  const body = parse(res);
+  assert.equal(body.crashes.length, 1);
+  assert.equal(body.windowDays, 14);
+  // The rollup's output, aggregated in Postgres - never Athena, never raw rows.
+  assert.match(text, /FROM telemetry_crashes/);
+  assert.match(text, /GROUP BY c.fingerprint/);
+});
+
+test('the crashes route is behind the same approval gate', async () => {
+  _setPoolForTests(makePool([]));
+  const res = await handler(httpEvent({ path: '/crashes', groups: [] }));
+  assert.equal(res.statusCode, 403);
+  assert.equal(pool.calls.length, 0);
+});
+
 test('the adherence routes are behind the same approval gate as everything else', async () => {
   _setPoolForTests(makePool([]));
   for (const path of ['/adherence/patients', '/adherence/4', '/daily-opens']) {

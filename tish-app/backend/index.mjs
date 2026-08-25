@@ -196,6 +196,28 @@ const TABLE_DEFINITIONS = [
 
     CREATE INDEX telemetry_daily_opens_day_idx
         ON telemetry_daily_opens (day DESC);` },
+    // Migration 013 mirrored. Same cache-not-record contract as daily opens:
+    // one row per Taipei day per crash fingerprint, written only by the
+    // nightly rollup, rebuildable from S3 at the cost of one night.
+    { name: 'telemetry_crashes', create: `CREATE TABLE telemetry_crashes (
+        day          DATE NOT NULL,
+        -- md5 of (fatal:platform:message), computed in Athena.
+        fingerprint  TEXT NOT NULL,
+        message      TEXT NOT NULL,
+        -- NULL for events recorded before the client stamped a platform.
+        platform     TEXT,
+        fatal        BOOLEAN NOT NULL DEFAULT true,
+        crashes      INTEGER NOT NULL,
+        -- Distinct users, counted in Athena. Not summable across days.
+        users        INTEGER NOT NULL,
+        sample_stack TEXT,
+        last_seen_at TIMESTAMPTZ,
+        refreshed_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        PRIMARY KEY (day, fingerprint)
+    );
+
+    CREATE INDEX telemetry_crashes_day_idx
+        ON telemetry_crashes (day DESC);` },
     { name: 'appointment_statuses', create: `CREATE TABLE appointment_statuses (id SERIAL PRIMARY KEY, label TEXT UNIQUE NOT NULL, color TEXT);` },
     { name: 'appointments', create: `CREATE TABLE appointments (
         id SERIAL PRIMARY KEY,
@@ -1122,7 +1144,9 @@ export const handler = async (event) => {
                 // Athena query: `refreshed_at` going stale is what a silently
                 // broken schedule looks like, and a fortnight of that is
                 // indistinguishable from a fortnight of no opens.
-                'telemetry_daily_opens'
+                'telemetry_daily_opens',
+                // 013 — the crash rollup, same cache contract as daily opens.
+                'telemetry_crashes'
             ];
 
             if (!allowedTables.includes(tableName)) {

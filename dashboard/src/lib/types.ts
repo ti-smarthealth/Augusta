@@ -228,6 +228,28 @@ export interface Alarm {
   notifies: boolean
 }
 
+/**
+ * One crash signature over the trailing window, aggregated across days by the
+ * nightly rollup (migration 013). `sample_stack` is the newest example and is
+ * minified in production builds — a hint for triage; the symbolicated truth
+ * lives in Athena plus the update's source map.
+ */
+export interface CrashSummary {
+  fingerprint: string
+  message: string
+  platform: string | null
+  fatal: boolean
+  crashes: number
+  last_seen_at: string | null
+  refreshed_at: string | null
+  sample_stack: string | null
+}
+
+export interface CrashesResponse {
+  crashes: CrashSummary[]
+  windowDays: number
+}
+
 export interface AlarmsResponse {
   alarms: Alarm[]
   inAlarm: number

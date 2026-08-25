@@ -16,6 +16,8 @@ import type {
   AdherenceDose,
   Alarm,
   AlarmsResponse,
+  CrashesResponse,
+  CrashSummary,
   DailyOpen,
   DailyOpensResponse,
   MetabasePowerResult,
@@ -296,6 +298,33 @@ export const mockApi = {
       { name: 'tish-operation-strix-errors', description: 'App API erroring repeatedly - reminders, doses or auth may be affected', state: 'OK', reason: 'Threshold Crossed: no datapoints breaching', since: new Date(Date.now() - 26 * 3600000).toISOString(), notifies: true },
     ]
     return { alarms, inAlarm: alarms.filter((a) => a.state === 'ALARM').length, subscribers: 0 }
+  },
+
+  async getCrashes(): Promise<CrashesResponse> {
+    await delay(250)
+    const crashes: CrashSummary[] = [
+      {
+        fingerprint: 'a3f9c1',
+        message: "TypeError: Cannot read property 'length' of undefined",
+        platform: 'ios',
+        fatal: true,
+        crashes: 7,
+        last_seen_at: new Date(Date.now() - 2 * 3600000).toISOString(),
+        refreshed_at: new Date(Date.now() - 8 * 3600000).toISOString(),
+        sample_stack: 'at HomeScreen (index.js:1:48211)\nat renderWithHooks (vendor.js:1:120433)',
+      },
+      {
+        fingerprint: 'b81d02',
+        message: 'RangeError: Invalid language tag: zh-Hant',
+        platform: 'ios',
+        fatal: false,
+        crashes: 1,
+        last_seen_at: new Date(Date.now() - 26 * 3600000).toISOString(),
+        refreshed_at: new Date(Date.now() - 8 * 3600000).toISOString(),
+        sample_stack: null,
+      },
+    ]
+    return { crashes, windowDays: 14 }
   },
 
   async getMetabaseStatus(): Promise<MetabaseStatus> {

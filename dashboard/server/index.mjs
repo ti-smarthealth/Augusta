@@ -69,6 +69,7 @@ export function requiredEnvFor(routeName) {
     case 'listAdherencePatients':
     case 'getPatientAdherence':
     case 'getDailyOpens':
+    case 'getCrashes':
       return [...DB_ENV, 'ALLOWED_ORIGIN'];
     case 'getTranslations':
     case 'putTranslations':
@@ -486,6 +487,7 @@ export function routeOf(method, path) {
   const adherenceMatch = clean.match(/^\/adherence\/(\d+)$/);
   if (method === 'GET' && adherenceMatch) return { name: 'getPatientAdherence', userId: Number(adherenceMatch[1]) };
   if (method === 'GET' && clean === '/daily-opens') return { name: 'getDailyOpens' };
+  if (method === 'GET' && clean === '/crashes') return { name: 'getCrashes' };
   // TELEMETRY.md §4 — Metabase is expected to be off between beta programmes,
   // so starting it is a routine action rather than an ops task.
   if (method === 'GET' && clean === '/alarms') return { name: 'getAlarms' };
@@ -752,6 +754,35 @@ export async function handler(event) {
           WHERE day BETWEEN $1::date AND $2::date
           ORDER BY day`, [from, to]);
         return json(200, { opens: res.rows });
+      }
+
+      case 'getCrashes': {
+        const db = getPool();
+        // Fixed 14-day window — matches the rollup's own recompute window, so
+        // this never shows a day the job might still be correcting the far
+        // edge of. Aggregated across days per fingerprint: the Health page
+        // wants "what is crashing and how often", not a calendar.
+        //
+        // The lateral picks the *newest* day's sample stack for each
+        // fingerprint — the crash as it behaves now, not as it first appeared.
+        const res = await db.query(`
+          SELECT c.fingerprint,
+                 max(c.message)                       AS message,
+                 max(c.platform)                      AS platform,
+                 bool_or(c.fatal)                     AS fatal,
+                 sum(c.crashes)::int                  AS crashes,
+                 max(c.last_seen_at)                  AS last_seen_at,
+                 max(c.refreshed_at)                  AS refreshed_at,
+                 (SELECT s.sample_stack FROM telemetry_crashes s
+                   WHERE s.fingerprint = c.fingerprint
+                     AND s.day >= current_date - 14
+                   ORDER BY s.day DESC LIMIT 1)       AS sample_stack
+          FROM telemetry_crashes c
+          WHERE c.day >= current_date - 14
+          GROUP BY c.fingerprint
+          ORDER BY max(c.last_seen_at) DESC NULLS LAST
+          LIMIT 50`);
+        return json(200, { crashes: res.rows, windowDays: 14 });
       }
 
       // --- Operational health ---------------------------------------------

@@ -101,7 +101,43 @@ function dailyOpensSql(windowDays) {
 }
 
 /**
- * The non-VPC half: run the aggregation, hand the rows to the database half.
+ * `app.crash` events, grouped per Taipei day per fingerprint.
+ *
+ * The fingerprint hashes (fatal, platform, message) so one repeating crash is
+ * one row per day with a count, stable across days so recurrence is visible.
+ * The stack rides along as `max_by(..., occurred_at)` — the newest example —
+ * because on the Health page one stack per crash is the useful amount and all
+ * of them are still in S3 for the deep dive.
+ *
+ * `coalesce` on every extracted prop: a malformed crash event — and a crash
+ * reporter is exactly the code most likely to run in a damaged process — must
+ * degrade to a row with less detail, not vanish from the count.
+ */
+function crashesSql(windowDays) {
+    return `
+        SELECT date_format(occurred_at AT TIME ZONE 'Asia/Taipei', '%Y-%m-%d')    AS day,
+               to_hex(md5(to_utf8(concat(
+                   coalesce(json_extract_scalar(props, '$.fatal'), '?'), ':',
+                   coalesce(json_extract_scalar(props, '$.platform'), '?'), ':',
+                   coalesce(json_extract_scalar(props, '$.message'), '')))))      AS fingerprint,
+               coalesce(json_extract_scalar(props, '$.message'), '(no message)')  AS message,
+               json_extract_scalar(props, '$.platform')                           AS platform,
+               coalesce(json_extract_scalar(props, '$.fatal'), 'true')            AS fatal,
+               count(*)                                                           AS crashes,
+               count(DISTINCT cognito_id)                                         AS users,
+               max_by(json_extract_scalar(props, '$.stack'), occurred_at)         AS sample_stack,
+               date_format(max(occurred_at), '%Y-%m-%dT%H:%i:%sZ')                AS last_seen_at
+        FROM ${DATABASE}.events
+        WHERE event = 'app.crash'
+          AND dt >= date_format(current_date - interval '${windowDays + 30}' day, '%Y/%m/%d/00')
+          AND occurred_at AT TIME ZONE 'Asia/Taipei'
+              >= current_date - interval '${windowDays}' day
+        GROUP BY 1, 2, 3, 4, 5
+        ORDER BY 1 DESC`;
+}
+
+/**
+ * The non-VPC half: run the aggregations, hand the rows to the database half.
  *
  * Triggered by EventBridge and by nothing else. Returns a summary rather than
  * throwing on an empty result — a day with no opens is a legitimate answer, and
@@ -123,11 +159,33 @@ export async function rollupHandler() {
     // the only place the difference is visible.
     console.info('[rollup] athena returned', opens.length, 'day/source rows');
 
-    if (opens.length === 0) return { rows: 0 };
+    let written = 0;
+    if (opens.length > 0) {
+        ({ written = 0 } = await invokeDb({ op: 'daily-opens', rows: opens }));
+        console.info('[rollup] wrote', written, 'open rows to postgres');
+    }
 
-    const { written = 0 } = await invokeDb({ op: 'daily-opens', rows: opens });
-    console.info('[rollup] wrote', written, 'rows to postgres');
-    return { rows: written };
+    const crashRows = (await athena(crashesSql(WINDOW_DAYS))).map((r) => ({
+        day: r.day,
+        fingerprint: r.fingerprint,
+        message: r.message || '(no message)',
+        platform: r.platform || null,
+        fatal: r.fatal !== 'false',
+        crashes: Number(r.crashes) || 0,
+        users: Number(r.users) || 0,
+        sample_stack: r.sample_stack || null,
+        last_seen_at: r.last_seen_at || null,
+    })).filter((r) => r.day && r.fingerprint);
+
+    console.info('[rollup] athena returned', crashRows.length, 'day/crash rows');
+
+    let crashesWritten = 0;
+    if (crashRows.length > 0) {
+        ({ written: crashesWritten = 0 } = await invokeDb({ op: 'crashes', rows: crashRows }));
+        console.info('[rollup] wrote', crashesWritten, 'crash rows to postgres');
+    }
+
+    return { rows: written, crashes: crashesWritten };
 }
 
 /**
@@ -135,6 +193,7 @@ export async function rollupHandler() {
  * it has no API Gateway route and must never get one.
  */
 export async function rollupDbHandler(event) {
+    if (event?.op === 'crashes') return writeCrashes(event);
     if (event?.op !== 'daily-opens') {
         throw new Error(`unknown op: ${event?.op}`);
     }
@@ -160,6 +219,49 @@ export async function rollupDbHandler(event) {
             rows.map((r) => r.source),
             rows.map((r) => r.opens),
             rows.map((r) => r.users),
+        ]);
+
+    return { written: written.rowCount };
+}
+
+/**
+ * The crashes upsert — same single-statement `unnest` shape as daily opens,
+ * for the same reason: this instance also decides whether alarms fire, and a
+ * nightly job nobody is waiting on has no business making it wait.
+ */
+async function writeCrashes(event) {
+    const rows = Array.isArray(event.rows) ? event.rows : [];
+    if (rows.length === 0) return { written: 0 };
+
+    const written = await pool.query(`
+        INSERT INTO telemetry_crashes
+            (day, fingerprint, message, platform, fatal, crashes, users,
+             sample_stack, last_seen_at, refreshed_at)
+        SELECT day, fingerprint, message, platform, fatal, crashes, users,
+               sample_stack, last_seen_at, now()
+        FROM unnest($1::date[], $2::text[], $3::text[], $4::text[], $5::boolean[],
+                    $6::int[], $7::int[], $8::text[], $9::timestamptz[])
+             AS u(day, fingerprint, message, platform, fatal, crashes, users,
+                  sample_stack, last_seen_at)
+        ON CONFLICT (day, fingerprint) DO UPDATE
+            SET message      = EXCLUDED.message,
+                platform     = EXCLUDED.platform,
+                fatal        = EXCLUDED.fatal,
+                crashes      = EXCLUDED.crashes,
+                users        = EXCLUDED.users,
+                sample_stack = EXCLUDED.sample_stack,
+                last_seen_at = EXCLUDED.last_seen_at,
+                refreshed_at = EXCLUDED.refreshed_at`,
+        [
+            rows.map((r) => r.day),
+            rows.map((r) => r.fingerprint),
+            rows.map((r) => r.message),
+            rows.map((r) => r.platform ?? null),
+            rows.map((r) => r.fatal !== false),
+            rows.map((r) => r.crashes),
+            rows.map((r) => r.users),
+            rows.map((r) => r.sample_stack ?? null),
+            rows.map((r) => r.last_seen_at ?? null),
         ]);
 
     return { written: written.rowCount };
@@ -259,4 +361,4 @@ async function defaultInvokeDb(payload) {
     return raw ? JSON.parse(raw) : {};
 }
 
-export const _internals = { dailyOpensSql, WINDOW_DAYS };
+export const _internals = { dailyOpensSql, crashesSql, WINDOW_DAYS };

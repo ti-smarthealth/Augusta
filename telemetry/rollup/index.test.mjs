@@ -186,3 +186,116 @@ test('an unknown op is refused rather than guessed at', async () => {
     await assert.rejects(() => rollupDbHandler({ op: 'drop-everything' }), /unknown op/);
     await assert.rejects(() => rollupDbHandler({}), /unknown op/);
 });
+
+// ---------------------------------------------------------------------------
+// The crash rollup (migration 013)
+// ---------------------------------------------------------------------------
+
+test('crashes are bucketed in Taipei with the same widened partition floor', () => {
+    // Same two rules as the opens query, asserted independently so an edit to
+    // one query cannot silently orphan the other: Taipei days, and a `dt`
+    // floor reaching further back than the day window to catch a crash that
+    // sat buffered on an offline phone.
+    const sql = _internals.crashesSql(14);
+    assert.match(sql, /AT TIME ZONE 'Asia\/Taipei'/);
+    assert.match(sql, /\bdt >=/);
+    const dtDays = Number(sql.match(/current_date - interval '(\d+)' day, '%Y\/%m\/%d\/00'/)[1]);
+    assert.ok(dtDays > 14);
+});
+
+test('one repeating crash is one row with a count, carrying its newest stack', () => {
+    // The whole point of the fingerprint: a crash-loop is a line on the Health
+    // page, not a hundred. `max_by` keeps the newest stack as the sample.
+    const sql = _internals.crashesSql(14);
+    assert.match(sql, /to_hex\(md5\(/);
+    assert.match(sql, /max_by\(json_extract_scalar\(props, '\$\.stack'\), occurred_at\)/);
+    assert.match(sql, /event = 'app\.crash'/);
+});
+
+test('crash rows are normalised and sent as their own op', async (t) => {
+    t.after(restore);
+
+    // The fake dispatches on the SQL, because the handler now runs two
+    // aggregations in one invocation and each must reach its own op.
+    _setAthenaForTests(async (sql) => {
+        if (/app\.crash/.test(sql)) {
+            return [{
+                day: '2026-08-25', fingerprint: 'abc123', message: 'boom',
+                platform: 'ios', fatal: 'true', crashes: '4', users: '1',
+                sample_stack: 'at broken (app.js:1)', last_seen_at: '2026-08-25T15:05:33Z',
+            }, {
+                day: '2026-08-25', fingerprint: 'def456', message: 'soft',
+                platform: null, fatal: 'false', crashes: '1', users: '1',
+                sample_stack: null, last_seen_at: null,
+            }];
+        }
+        return [{ day: '2026-08-25', source: 'cold', opens: '2', users: '2' }];
+    });
+
+    const payloads = [];
+    _setInvokerForTests(async (payload) => { payloads.push(payload); return { written: payload.rows.length }; });
+
+    const out = await rollupHandler();
+
+    assert.equal(out.rows, 1);
+    assert.equal(out.crashes, 2);
+    assert.deepEqual(payloads.map((p) => p.op), ['daily-opens', 'crashes']);
+    // Athena strings become the types Postgres expects, and the JSON-boolean
+    // string 'false' must not truthy its way into fatal.
+    assert.deepEqual(payloads[1].rows[0], {
+        day: '2026-08-25', fingerprint: 'abc123', message: 'boom', platform: 'ios',
+        fatal: true, crashes: 4, users: 1,
+        sample_stack: 'at broken (app.js:1)', last_seen_at: '2026-08-25T15:05:33Z',
+    });
+    assert.equal(payloads[1].rows[1].fatal, false);
+    assert.equal(payloads[1].rows[1].platform, null);
+});
+
+test('no crashes means the crashes op is never invoked', async (t) => {
+    t.after(restore);
+
+    _setAthenaForTests(async (sql) => (/app\.crash/.test(sql)
+        ? []
+        : [{ day: '2026-08-25', source: 'cold', opens: '1', users: '1' }]));
+
+    const ops = [];
+    _setInvokerForTests(async (payload) => { ops.push(payload.op); return { written: 1 }; });
+
+    const out = await rollupHandler();
+    assert.deepEqual(ops, ['daily-opens']);
+    assert.equal(out.crashes, 0);
+});
+
+test('the crash write is one upsert keyed on (day, fingerprint)', async (t) => {
+    t.after(() => _setPoolForTests(null));
+
+    let sql = '';
+    let params = null;
+    _setPoolForTests({ query: async (q, p) => { sql = q; params = p; return { rowCount: 2 }; } });
+
+    const out = await rollupDbHandler({
+        op: 'crashes',
+        rows: [
+            { day: '2026-08-25', fingerprint: 'abc', message: 'boom', platform: 'ios', fatal: true, crashes: 4, users: 1, sample_stack: 's', last_seen_at: '2026-08-25T15:05:33Z' },
+            { day: '2026-08-24', fingerprint: 'def', message: 'soft', platform: null, fatal: false, crashes: 1, users: 1, sample_stack: null, last_seen_at: null },
+        ],
+    });
+
+    assert.equal(out.written, 2);
+    assert.match(sql, /unnest/i);
+    assert.match(sql, /ON CONFLICT \(day, fingerprint\) DO UPDATE/);
+    assert.deepEqual(params[0], ['2026-08-25', '2026-08-24']);
+    assert.deepEqual(params[4], [true, false]);
+    assert.deepEqual(params[3], ['ios', null]);
+});
+
+test('an empty crash batch takes no connection either', async (t) => {
+    t.after(() => _setPoolForTests(null));
+
+    let called = false;
+    _setPoolForTests({ query: async () => { called = true; return { rowCount: 0 }; } });
+
+    const out = await rollupDbHandler({ op: 'crashes', rows: [] });
+    assert.equal(out.written, 0);
+    assert.equal(called, false);
+});
