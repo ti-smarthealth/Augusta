@@ -35,6 +35,33 @@ interface ErrorUtilsLike {
 /** How long the crash path will wait for the flush before proceeding. */
 const FLUSH_GRACE_MS = 800;
 
+/**
+ * The boundary-caught half. The global handler below only sees *unhandled*
+ * errors — a React render error caught by expo-router's ErrorBoundary never
+ * reaches ErrorUtils, so the first real crash this reporter was built for
+ * (the reminder edit form's TypeError, 2026-08-26) left a blank screen and
+ * **no event**. The root layout's ErrorBoundary calls this instead.
+ *
+ * Same persistence contract as the handler: `record()` lands in AsyncStorage,
+ * so the event survives even if the flush loses a race with the user killing
+ * the broken app.
+ */
+export function reportBoundaryError(error: unknown): void {
+  try {
+    const err = error instanceof Error ? error : new Error(String(error));
+    record('app.crash', {
+      fatal: false,
+      boundary: true,
+      message: String(err.message ?? '').slice(0, 300),
+      stack: String(err.stack ?? '').slice(0, 1800),
+      platform: Platform.OS,
+      app_version: Constants.expoConfig?.version ?? null,
+      update_id: Updates.updateId ?? null,
+    });
+    void flushTelemetry();
+  } catch { /* the crash path must not crash */ }
+}
+
 let installed = false;
 
 export function installCrashReporter(): void {

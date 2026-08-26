@@ -2,7 +2,7 @@ import { Amplify } from 'aws-amplify';
 import * as Notifications from 'expo-notifications';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, AppState, LogBox, Platform, View } from 'react-native';
+import { ActivityIndicator, AppState, LogBox, Platform, Pressable, Text, View } from 'react-native';
 import { MD3LightTheme, Provider as PaperProvider } from 'react-native-paper';
 
 // Correct imports
@@ -14,8 +14,9 @@ import { initI18n } from '../i18n';
 import { DEFAULT_SNOOZE_MINUTES, snoozeMinutesFor } from '../utils/alarm-settings';
 import { cancelAlarmBurst, dismissPresentedAlarms, notificationPermissionRequest, rescheduleNextOccurrence, setupNotificationChannels } from '../utils/notification-helper';
 import { registerPushToken } from '../utils/push-token';
-import { installCrashReporter } from '../utils/crash-reporting';
+import { installCrashReporter, reportBoundaryError } from '../utils/crash-reporting';
 import { noteNotificationOpen, trackAppState, trackLaunch } from '../utils/telemetry';
+import type { ErrorBoundaryProps } from 'expo-router';
 
 // --- 1. CONFIGURATION ---
 // At module scope, before the first render, so a crash anywhere — including
@@ -25,6 +26,38 @@ import { noteNotificationOpen, trackAppState, trackLaunch } from '../utils/telem
 installCrashReporter();
 
 LogBox.ignoreLogs(['Unknown event handler property', 'onResponderTerminate', 'Invalid DOM property', 'transform-origin']);
+
+/**
+ * Route render errors land here, not in the global handler — a caught render
+ * error never reaches ErrorUtils, which is how the reminder edit form crashed
+ * to a silent blank screen with no telemetry (2026-08-26). Report first, then
+ * show something a patient can act on.
+ *
+ * Deliberately hardcoded bilingual text rather than t(): this renders when a
+ * screen has already thrown, so it depends on as little of the app as
+ * possible — an i18n failure here would trade a reported crash for an
+ * unreported one.
+ */
+export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
+  React.useEffect(() => { reportBoundaryError(error); }, [error]);
+  return (
+    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, backgroundColor: '#F8FAFC' }}>
+      <Text style={{ fontSize: 18, fontWeight: '800', color: '#0F172A', textAlign: 'center' }}>
+        出了點問題{'\n'}Something went wrong
+      </Text>
+      <Text style={{ fontSize: 13, color: '#64748B', textAlign: 'center', marginTop: 12 }}>
+        問題已回報，請再試一次。{'\n'}The problem has been reported — please try again.
+      </Text>
+      <Pressable
+        onPress={retry}
+        accessibilityRole="button"
+        style={{ marginTop: 24, backgroundColor: '#6366F1', borderRadius: 12, paddingVertical: 14, paddingHorizontal: 40 }}
+      >
+        <Text style={{ color: 'white', fontWeight: '700' }}>重試 / Retry</Text>
+      </Pressable>
+    </View>
+  );
+}
 
 Amplify.configure({
   Auth: {
