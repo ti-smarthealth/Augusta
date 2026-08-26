@@ -140,13 +140,25 @@ export default function MedicationReminderForm() {
         bedtime: { enabled: initialData?.at_bedtime || false, timing: 'none' }
     });
 
+    // Always four entries, because the alarm section always renders four
+    // slots. Initialising from `initialData.alarms` alone left slots beyond
+    // the stored count `undefined`, and the first render of the edit form then
+    // died on `alarmTimes[i].toLocaleTimeString` — a blank screen on native,
+    // for every reminder with fewer than four alarms, which is nearly all of
+    // them. Found by the Android device-verification pass, 2026-08-26; the
+    // slot beyond the stored alarms gets its default time and stays inactive.
     const [alarmTimes, setAlarmTimes] = useState<Date[]>(
-        initialData?.alarms
-            ? initialData.alarms.map((alarmTime: string) => {
-                const [h, m] = alarmTime.split(':').map(Number);
-                const d = new Date(); d.setHours(h, m, 0, 0); return d;
-            })
-            : [new Date(new Date().setHours(8, 0, 0, 0)), new Date(new Date().setHours(12, 0, 0, 0)), new Date(new Date().setHours(18, 0, 0, 0)), new Date(new Date().setHours(21, 0, 0, 0))]
+        [[8, 0], [12, 0], [18, 0], [21, 0]].map(([defH, defM], i) => {
+            const stored = initialData?.alarms?.[i];
+            const d = new Date();
+            if (typeof stored === 'string' && stored.includes(':')) {
+                const [h, m] = stored.split(':').map(Number);
+                d.setHours(h, m, 0, 0);
+            } else {
+                d.setHours(defH, defM, 0, 0);
+            }
+            return d;
+        })
     );
     const [activeAlarms, setActiveAlarms] = useState(initialData?.alarms ? [true, true, true, true].map((_, i) => i < initialData.alarms.length) : [true, false, false, false]);
     const [alarmLabels, setAlarmLabels] = useState<string[]>(
