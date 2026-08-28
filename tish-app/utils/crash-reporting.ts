@@ -19,10 +19,7 @@
  * always called. A crash reporter that turns fatal errors into silent
  * continuation would be repairing the symptom by installing a worse disease.
  */
-import Constants from 'expo-constants';
-import * as Updates from 'expo-updates';
-import { Platform } from 'react-native';
-
+import { buildIdentity } from './build-info';
 import { record, flushTelemetry } from './telemetry';
 
 type GlobalErrorHandler = (error: unknown, isFatal?: boolean) => void;
@@ -54,9 +51,7 @@ export function reportBoundaryError(error: unknown): void {
       boundary: true,
       message: String(err.message ?? '').slice(0, 300),
       stack: String(err.stack ?? '').slice(0, 1800),
-      platform: Platform.OS,
-      app_version: Constants.expoConfig?.version ?? null,
-      update_id: Updates.updateId ?? null,
+      ...buildIdentity(),
     });
     void flushTelemetry();
   } catch { /* the crash path must not crash */ }
@@ -89,9 +84,7 @@ export function installCrashReporter(): void {
         // Which platform, binary, and OTA update crashed. The rollup groups on
         // platform; version and update id ride along for the Athena deep dive
         // — "did this start with the last publish" is otherwise unanswerable.
-        platform: Platform.OS,
-        app_version: Constants.expoConfig?.version ?? null,
-        update_id: Updates.updateId ?? null,
+        ...buildIdentity(),
       });
 
       // Best effort: the POST races the abort and often loses. The bounded

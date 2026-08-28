@@ -26,6 +26,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { apiRequest } from './api';
+import { buildIdentity } from './build-info';
 import { TELEMETRY_ENDPOINT } from '../constants/config';
 import { isRetryableStatus } from './dose-queue-policy';
 import {
@@ -134,7 +135,10 @@ export function record(name: string, props: Record<string, unknown> = {}): void 
 export function trackLaunch(source: OpenSource = 'cold'): void {
   void serialise(async () => {
     const tracker = await readTracker();
-    const { tracker: next, event } = recordOpen(tracker, source, Date.now(), { cold: true });
+    // The launch event carries the build identity (see `build-info.ts`): it is
+    // the one event every device sends, so stamping it here is what makes
+    // "which bundle is that phone running" answerable at all.
+    const { tracker: next, event } = recordOpen(tracker, source, Date.now(), { cold: true, ...buildIdentity() });
     await writeTracker(next);
     if (event) await writeBuffer(bufferInto(await readBuffer(), event));
   });
