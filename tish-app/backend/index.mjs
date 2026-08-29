@@ -35,8 +35,27 @@ export function _setPoolForTests(fakePool) { pool = fakePool; }
  * that is never executed is not a schema; it is a document.
  */
 const TABLE_DEFINITIONS = [
-    { name: 'genders', create: `CREATE TABLE genders (id SERIAL PRIMARY KEY, name TEXT UNIQUE NOT NULL);` },
-    { name: 'conditions', create: `CREATE TABLE conditions (id SERIAL PRIMARY KEY, name TEXT UNIQUE NOT NULL, description TEXT);` },
+    // Migration 014 mirrored. Per-locale columns, as announcement_types has:
+    // `name_en` is the natural key, `name_zh_hant` is nullable so a
+    // half-translated vocabulary shows as such in the editor and falls back to
+    // English on the device. Unique on lower(), because "Male" and "male" are
+    // one entry to everyone except a plain UNIQUE.
+    { name: 'genders', create: `CREATE TABLE genders (
+        id SERIAL PRIMARY KEY,
+        name_en TEXT NOT NULL,
+        name_zh_hant TEXT
+    );
+
+    CREATE UNIQUE INDEX genders_name_en_key ON genders (lower(name_en));` },
+    { name: 'conditions', create: `CREATE TABLE conditions (
+        id SERIAL PRIMARY KEY,
+        name_en TEXT NOT NULL,
+        name_zh_hant TEXT,
+        -- Not localised: nothing renders it. See migration 014.
+        description TEXT
+    );
+
+    CREATE UNIQUE INDEX conditions_name_en_key ON conditions (lower(name_en));` },
     { name: 'users', create: `CREATE TABLE users (
         id SERIAL PRIMARY KEY,
         cognito_id UUID UNIQUE NOT NULL,
@@ -91,7 +110,14 @@ const TABLE_DEFINITIONS = [
         CONSTRAINT user_relationships_revoked_at_check
             CHECK ((status = 'revoked') = (revoked_at IS NOT NULL))
     );` },
-    { name: 'medication_library', create: `CREATE TABLE medication_library (id SERIAL PRIMARY KEY, name TEXT NOT NULL, default_dosage TEXT NOT NULL);` },
+    // Migration 014. No unique on the name: two products can legitimately share
+    // a display name at different dosages.
+    { name: 'medication_library', create: `CREATE TABLE medication_library (
+        id SERIAL PRIMARY KEY,
+        name_en TEXT NOT NULL,
+        name_zh_hant TEXT,
+        default_dosage TEXT NOT NULL
+    );` },
     { name: 'medication_reminders', create: `CREATE TABLE medication_reminders (
         id SERIAL PRIMARY KEY, 
         user_id INTEGER REFERENCES users(id) ON DELETE CASCADE, 
@@ -500,6 +526,47 @@ export const ANNOUNCEMENT_LOCALES = { en: 'en', 'zh-Hant': 'zh_hant' };
 export const DEFAULT_ANNOUNCEMENT_LOCALE = 'zh-Hant';
 
 /**
+ * Pick one localised field from a row carrying `<field>_en` / `<field>_zh_hant`
+ * (migration 014: genders, conditions, medication_library).
+ *
+ * **Falls back to the other language rather than to null**, because these are
+ * names: an untranslated condition shown in English is readable, and a blank
+ * one where a name should be is a screen the patient cannot use. The same
+ * reason `localiseAnnouncement` falls back rather than blanking — except a name
+ * is a single word, so there is no half-translated-paragraph problem to avoid
+ * and each field resolves on its own.
+ *
+ * Returns null only when neither side has anything, which the callers treat as
+ * a genuinely nameless row rather than papering over it.
+ */
+export function localisedField(row, field, locale) {
+    const preferred = ANNOUNCEMENT_LOCALES[locale] ? locale : DEFAULT_ANNOUNCEMENT_LOCALE;
+    const other = preferred === 'en' ? 'zh-Hant' : 'en';
+    const read = (l) => row?.[`${field}_${ANNOUNCEMENT_LOCALES[l]}`];
+    const filled = (v) => typeof v === 'string' && v.trim() !== '';
+    return filled(read(preferred)) ? read(preferred) : (filled(read(other)) ? read(other) : null);
+}
+
+/**
+ * Resolve the locale for a request: an explicit `?locale=`, else the user's
+ * stored `users.locale`, else the default.
+ *
+ * **The query parameter wins, because the client is the only thing that knows
+ * its own language.** `changeLanguage` writes AsyncStorage and never syncs
+ * `users.locale`, so that column is whatever registration defaulted it to — a
+ * fallback for builds predating the parameter, not the source of truth. Shared
+ * by the vocabularies and by `/announcements`, so the two cannot drift.
+ */
+async function resolveRequestLocale(queryParams, cognitoSub, getUserId) {
+    if (ANNOUNCEMENT_LOCALES[queryParams?.locale]) return queryParams.locale;
+    const userId = cognitoSub ? await getUserId(cognitoSub) : null;
+    const stored = userId
+        ? (await pool.query('SELECT locale FROM users WHERE id = $1', [userId])).rows[0]?.locale
+        : null;
+    return ANNOUNCEMENT_LOCALES[stored] ? stored : DEFAULT_ANNOUNCEMENT_LOCALE;
+}
+
+/**
  * Flatten one localised announcement row for a single reader.
  *
  * **An article resolves to one locale as a unit, chosen by which side has a
@@ -589,14 +656,14 @@ export const RESET_SQL = (() => {
  * The rest are always freshly created, so they need no conflict handling.
  */
 export const SEED_SQL = `
-    INSERT INTO genders (name) VALUES ('Male'), ('Female'), ('Non-binary'), ('Prefer not to say') ON CONFLICT (name) DO NOTHING;
-    INSERT INTO conditions (name) VALUES ('Acute Mission Stress'), ('Telepathic Overload'), ('Thorn Toxicity'), ('General Wellness') ON CONFLICT (name) DO NOTHING;
+    INSERT INTO genders (name_en, name_zh_hant) VALUES ('Male', '男性'), ('Female', '女性'), ('Non-binary', '非二元性別'), ('Prefer not to say', '不願透露') ON CONFLICT (lower(name_en)) DO NOTHING;
+    INSERT INTO conditions (name_en, name_zh_hant) VALUES ('Acute Mission Stress', '急性任務壓力'), ('Telepathic Overload', '心靈感應超載'), ('Thorn Toxicity', '荊棘毒性'), ('General Wellness', '一般健康') ON CONFLICT (lower(name_en)) DO NOTHING;
     INSERT INTO appointment_statuses (id, label, color) VALUES (1, 'New', '#6366F1'), (2, 'Cancelled', '#EF4444'), (3, 'Missed', '#F59E0B'), (4, 'Completed', '#22C55E');
     -- Guarded like genders and conditions, because this table is preserved: a
     -- seed after a reset must not resurrect a category staff deleted, nor
     -- overwrite a label they rewrote.
     INSERT INTO announcement_types (label_en, label_zh_hant, color, sort_order) VALUES ('System Updates', '系統更新', '#6366F1', 1), ('News', '最新消息', '#22C55E', 2), ('Announcements', '公告', '#F59E0B', 3) ON CONFLICT (lower(label_en)) DO NOTHING;
-    INSERT INTO medication_library (name, default_dosage) VALUES ('Anti-Telepathy Serum', '200mg, 500mg'), ('High-Grade Peanut Extract', '30mg'), ('Starlight Stamina Mints', '5mg');
+    INSERT INTO medication_library (name_en, name_zh_hant, default_dosage) VALUES ('Anti-Telepathy Serum', '抗心靈感應血清', '200mg, 500mg'), ('High-Grade Peanut Extract', '高純度花生萃取物', '30mg'), ('Starlight Stamina Mints', '星光耐力薄荷糖', '5mg');
     INSERT INTO test_config (field_number, display_name, units) VALUES (1, 'Starlight Level', 'g/dL'), (2, 'Reflex Factor', 'ms'), (3, 'Telepathy Wave', 'Hz');
 `;
 
@@ -1163,17 +1230,48 @@ export const handler = async (event) => {
             }
         }
 
-        else if (path === "/genders") { body = (await pool.query('SELECT * FROM genders ORDER BY id ASC')).rows; }
-        else if (path === "/conditions") { body = (await pool.query('SELECT * FROM conditions ORDER BY id ASC')).rows; }
+        // Migration 014 — both vocabularies now carry a name per locale.
+        //
+        // **Each row keeps its per-locale columns *and* gains a flat `name`.**
+        // The flat one is what installed builds read, and they ship
+        // independently of this Lambda: without it, every signup form in the
+        // field would render blank option labels the moment this deployed. The
+        // pair is what lets a current build re-resolve when the user switches
+        // language without refetching — the same contract `/announcements` has.
+        //
+        // These two are reachable without a token (they populate the signup
+        // form before an account exists), so the locale comes from the query
+        // parameter or the default; there is no user row to consult.
+        else if (path === "/genders" || path === "/conditions") {
+            const table = path === "/genders" ? 'genders' : 'conditions';
+            const locale = await resolveRequestLocale(queryParams, cognitoSub, getUserId);
+            body = (await pool.query(`SELECT * FROM ${table} ORDER BY id ASC`)).rows
+                .map((r) => ({ ...r, name: localisedField(r, 'name', locale) }));
+        }
         else if (path === "/appointment-statuses") { body = (await pool.query('SELECT * FROM appointment_statuses ORDER BY id ASC')).rows; }
         else if (path === "/medication-library") {
             // Matched on path alone before, so a POST fell into the GET branch
             // and returned the unchanged list with 200 — the add-medicine
             // dialog reported success and saved nothing.
             if (method === 'GET') {
-                body = (await pool.query('SELECT * FROM medication_library ORDER BY name ASC')).rows;
+                // Ordered by the English name rather than the resolved one, so
+                // the list does not reshuffle when a reader switches language —
+                // and because ordering by a value computed per-request would
+                // mean sorting in JS over the whole library.
+                const locale = await resolveRequestLocale(queryParams, cognitoSub, getUserId);
+                body = (await pool.query('SELECT * FROM medication_library ORDER BY name_en ASC')).rows
+                    .map((r) => ({ ...r, name: localisedField(r, 'name', locale) }));
             } else if (method === 'POST') {
-                const name = typeof payload?.name === 'string' ? payload.name.trim() : '';
+                // `name` is still accepted as the English name: the add-medicine
+                // dialog in every installed build sends exactly that key, and
+                // those builds ship independently of this Lambda. `name_en` is
+                // the name this route prefers; `name_zh_hant` is optional,
+                // because a patient adding a medicine mid-consultation should
+                // not be made to translate it first — staff can fill the other
+                // side later from the dashboard.
+                const name = typeof (payload?.name_en ?? payload?.name) === 'string'
+                    ? (payload.name_en ?? payload.name).trim() : '';
+                const nameZh = typeof payload?.name_zh_hant === 'string' ? payload.name_zh_hant.trim() : '';
                 const dosage = typeof payload?.default_dosage === 'string' ? payload.default_dosage.trim() : '';
                 if (!name || !dosage) {
                     fail('VALIDATION_FAILED', {
@@ -1184,9 +1282,11 @@ export const handler = async (event) => {
                         ],
                     });
                 } else {
-                    const q = `INSERT INTO medication_library (name, default_dosage) VALUES ($1, $2) RETURNING *`;
+                    const q = `INSERT INTO medication_library (name_en, name_zh_hant, default_dosage)
+                               VALUES ($1, $2, $3) RETURNING *`;
                     statusCode = 201;
-                    body = (await pool.query(q, [name, dosage])).rows[0];
+                    const created = (await pool.query(q, [name, nameZh || null, dosage])).rows[0];
+                    body = { ...created, name: created.name_en };
                 }
             } else {
                 fail('METHOD_NOT_ALLOWED', { message: `Method ${method} not allowed on ${path}.` });
@@ -1281,8 +1381,18 @@ export const handler = async (event) => {
         }
 
         else if (path === "/me") {
-            const q = `SELECT u.*, g.name as gender_name, c.name as condition_name FROM users u
-                       LEFT JOIN genders g ON u.gender_id = g.id LEFT JOIN conditions c ON u.condition_id = c.id WHERE u.cognito_id = $1`;
+            // Migration 014 — the profile screen showed "Male" and "General
+            // Wellness" in a Chinese UI because these came from lookup rows
+            // that had only ever held English. Both sides travel so the screen
+            // can re-resolve on a language switch; the flat names stay for
+            // installed builds.
+            const q = `SELECT u.*,
+                              g.name_en AS gender_name_en, g.name_zh_hant AS gender_name_zh_hant,
+                              c.name_en AS condition_name_en, c.name_zh_hant AS condition_name_zh_hant
+                         FROM users u
+                         LEFT JOIN genders g ON u.gender_id = g.id
+                         LEFT JOIN conditions c ON u.condition_id = c.id
+                        WHERE u.cognito_id = $1`;
             const res = await pool.query(q, [cognitoSub]);
             // Two faults sat on these lines. `res.rows.count` is always
             // undefined (arrays have .length), so the not-found branch never
@@ -1299,7 +1409,18 @@ export const handler = async (event) => {
             if (res.rows.length === 0) {
                 fail('PROFILE_NOT_FOUND');
             } else {
-                body = res.rows[0];
+                const row = res.rows[0];
+                // The caller's own row carries `locale`, so this needs no extra
+                // query — and an explicit `?locale=` still wins, because the
+                // device knows its language before that column does.
+                const meLocale = ANNOUNCEMENT_LOCALES[queryParams?.locale]
+                    ? queryParams.locale
+                    : (ANNOUNCEMENT_LOCALES[row.locale] ? row.locale : DEFAULT_ANNOUNCEMENT_LOCALE);
+                body = {
+                    ...row,
+                    gender_name: localisedField(row, 'gender_name', meLocale),
+                    condition_name: localisedField(row, 'condition_name', meLocale),
+                };
             }
         }
         else if (path === "/my-dependents") {
@@ -1643,7 +1764,16 @@ export const handler = async (event) => {
             await requireAccess(userId, targetId);
 
             if (method === 'GET') {
-                body = (await pool.query('SELECT r.*, l.name as med_name FROM medication_reminders r JOIN medication_library l ON r.med_id = l.id WHERE r.user_id = $1 ORDER BY r.status ASC', [targetId])).rows;
+                // Both columns travel so the device can re-resolve on a language
+                // switch; `med_name` stays flat for builds that only read that.
+                const locale = await resolveRequestLocale(queryParams, cognitoSub, getUserId);
+                body = (await pool.query(
+                    `SELECT r.*, l.name_en AS med_name_en, l.name_zh_hant AS med_name_zh_hant
+                       FROM medication_reminders r
+                       JOIN medication_library l ON r.med_id = l.id
+                      WHERE r.user_id = $1
+                      ORDER BY r.status ASC`, [targetId])).rows
+                    .map((r) => ({ ...r, med_name: localisedField(r, 'med_name', locale) }));
 
                 // 5.1 — top up the rolling window (D-2 safe: only future slots).
                 //
@@ -1834,8 +1964,10 @@ export const handler = async (event) => {
                 // this table grows by roughly 3,000 rows per user per year.
                 const from = queryParams.from || null;
                 const to = queryParams.to || null;
+                const dosesLocale = await resolveRequestLocale(queryParams, cognitoSub, getUserId);
                 body = (await pool.query(`
-                    SELECT d.*, l.name AS med_name, r.selected_dosage
+                    SELECT d.*, l.name_en AS med_name_en, l.name_zh_hant AS med_name_zh_hant,
+                           r.selected_dosage
                     FROM medication_doses d
                     JOIN medication_reminders r ON r.id = d.reminder_id
                     JOIN medication_library l ON l.id = r.med_id
@@ -1843,7 +1975,8 @@ export const handler = async (event) => {
                       AND ($2::timestamptz IS NULL OR d.scheduled_for >= $2::timestamptz)
                       AND ($3::timestamptz IS NULL OR d.scheduled_for <= $3::timestamptz)
                     ORDER BY d.scheduled_for DESC
-                    LIMIT 500`, [targetId, from, to])).rows;
+                    LIMIT 500`, [targetId, from, to])).rows
+                    .map((r) => ({ ...r, med_name: localisedField(r, 'med_name', dosesLocale) }));
             }
             else if (method === 'POST') {
                 const action = payload?.action === 'snooze' ? 'snooze' : 'confirm';

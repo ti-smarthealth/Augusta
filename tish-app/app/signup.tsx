@@ -37,13 +37,19 @@ import { GlobalStyles } from '../styles/globalstyles';
 import { apiRequest } from '../utils/api';
 import { apiErrorMessage, describeApiFailure } from '../utils/api-errors';
 import { a11yLang, heading } from '@/utils/accessibility';
+import { announcementLocaleFrom } from '@/utils/announcements';
+import { localisedName } from '@/utils/vocabulary';
 
 // Mirrors AuthDeliveryMedium from aws-amplify/auth.
 type DeliveryMedium = 'EMAIL' | 'SMS' | 'PHONE' | 'UNKNOWN';
 
 export default function SignupScreen() {
   const router = useRouter();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  // Migration 014 — the option labels come from lookup rows, so they resolve
+  // here rather than being fixed at fetch time. Signup is where the language
+  // toggle is most likely to be used, which is exactly when a stale list shows.
+  const vocabularyLocale = announcementLocaleFrom(i18n.language);
   const { user, checkUser } = useAuth();
   // Set by login.tsx when it meets an unverified account, so we can open
   // straight on the confirm step instead of a blank registration form.
@@ -578,11 +584,11 @@ export default function SignupScreen() {
               onDismiss={() => setMenus({ ...menus, gender: false })}
               anchor={
                 <Button mode="outlined" onPress={() => setMenus({ ...menus, gender: true })} style={styles.pickerBtn} textColor={form.gender_id ? COLORS.ink : COLORS.slate}>
-                  {genders.find(c => c.id === form.gender_id)?.name || t('common.selectPlaceholder')}
+                  {localisedName(genders.find(c => c.id === form.gender_id), 'name', vocabularyLocale) || t('common.selectPlaceholder')}
                 </Button>
               }
             >
-              {genders.map(g => <Menu.Item key={g.id} onPress={() => { setForm({ ...form, gender_id: g.id }); setMenus({ ...menus, gender: false }); }} title={g.name} />)}
+              {genders.map(g => <Menu.Item key={g.id} onPress={() => { setForm({ ...form, gender_id: g.id }); setMenus({ ...menus, gender: false }); }} title={localisedName(g, 'name', vocabularyLocale) ?? ''} />)}
             </Menu>
           </View>
 
@@ -593,11 +599,11 @@ export default function SignupScreen() {
               onDismiss={() => setMenus({ ...menus, condition: false })}
               anchor={
                 <Button mode="outlined" onPress={() => setMenus({ ...menus, condition: true })} style={styles.pickerBtn} textColor={form.condition_id ? COLORS.ink : COLORS.slate}>
-                  {conditions.find(c => c.id === form.condition_id)?.name || t('common.selectPlaceholder')}
+                  {localisedName(conditions.find(c => c.id === form.condition_id), 'name', vocabularyLocale) || t('common.selectPlaceholder')}
                 </Button>
               }
             >
-              {conditions.map(c => <Menu.Item key={c.id} onPress={() => { setForm({ ...form, condition_id: c.id }); setMenus({ ...menus, condition: false }); }} title={c.name} />)}
+              {conditions.map(c => <Menu.Item key={c.id} onPress={() => { setForm({ ...form, condition_id: c.id }); setMenus({ ...menus, condition: false }); }} title={localisedName(c, 'name', vocabularyLocale) ?? ''} />)}
             </Menu>
           </View>
 
@@ -777,11 +783,11 @@ export default function SignupScreen() {
             onDismiss={() => setMenus({ ...menus, gender: false })}
             anchor={
               <Button mode="outlined" onPress={() => setMenus({ ...menus, gender: true })} style={styles.pickerBtn} textColor={form.gender_id ? COLORS.ink : COLORS.slate}>
-                {genders.find(c => c.id === form.gender_id)?.name || t('common.selectPlaceholder')}
+                {localisedName(genders.find(c => c.id === form.gender_id), 'name', vocabularyLocale) || t('common.selectPlaceholder')}
               </Button>
             }
           >
-            {genders.map(g => <Menu.Item key={g.id} onPress={() => { setForm({ ...form, gender_id: g.id }); setMenus({ ...menus, gender: false }); }} title={g.name} />)}
+            {genders.map(g => <Menu.Item key={g.id} onPress={() => { setForm({ ...form, gender_id: g.id }); setMenus({ ...menus, gender: false }); }} title={localisedName(g, 'name', vocabularyLocale) ?? ''} />)}
           </Menu>
         </View>
 
@@ -792,11 +798,11 @@ export default function SignupScreen() {
             onDismiss={() => setMenus({ ...menus, condition: false })}
             anchor={
               <Button mode="outlined" onPress={() => setMenus({ ...menus, condition: true })} style={styles.pickerBtn} textColor={form.condition_id ? COLORS.ink : COLORS.slate}>
-                {conditions.find(c => c.id === form.condition_id)?.name || t('common.selectPlaceholder')}
+                {localisedName(conditions.find(c => c.id === form.condition_id), 'name', vocabularyLocale) || t('common.selectPlaceholder')}
               </Button>
             }
           >
-            {conditions.map(c => <Menu.Item key={c.id} onPress={() => { setForm({ ...form, condition_id: c.id }); setMenus({ ...menus, condition: false }); }} title={c.name} />)}
+            {conditions.map(c => <Menu.Item key={c.id} onPress={() => { setForm({ ...form, condition_id: c.id }); setMenus({ ...menus, condition: false }); }} title={localisedName(c, 'name', vocabularyLocale) ?? ''} />)}
           </Menu>
         </View>
 

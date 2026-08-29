@@ -96,11 +96,13 @@ test('statusCode is always a number, on success and on every error path', async 
 
 test('GET /genders is public and returns rows', async () => {
   _setPoolForTests(makePool([
-    { match: /FROM genders/, result: { rows: [{ id: 1, name: 'Female' }] } },
+    { match: /FROM genders/, result: { rows: [{ id: 1, name_en: 'Female', name_zh_hant: '女性' }] } },
   ]));
   const res = await handler(restEvent({ path: '/genders' }));
   assert.equal(res.statusCode, 200);
-  assert.deepEqual(parse(res), [{ id: 1, name: 'Female' }]);
+  // Migration 014: both sides travel, plus the flat `name` installed builds read.
+  // No ?locale= and no session here, so it resolves to the default (zh-Hant).
+  assert.deepEqual(parse(res), [{ id: 1, name_en: 'Female', name_zh_hant: '女性', name: '女性' }]);
 });
 
 test('GET /check-availability without params returns 400', async () => {
@@ -197,7 +199,9 @@ test('GET /me returns 404 with a non-empty body the client can parse', async () 
 });
 
 test('GET /me returns the joined profile when the row exists', async () => {
-  const profile = { id: 3, full_name: 'Margaret', gender_name: 'Female', condition_name: 'General Wellness' };
+  const profile = { id: 3, full_name: 'Margaret', locale: 'en',
+    gender_name_en: 'Female', gender_name_zh_hant: '女性',
+    condition_name_en: 'General Wellness', condition_name_zh_hant: '一般健康' };
   _setPoolForTests(makePool([
     { match: /FROM users u/, result: (t, params) => {
         assert.deepEqual(params, ['sub-1']);
@@ -206,7 +210,8 @@ test('GET /me returns the joined profile when the row exists', async () => {
   ]));
   const res = await handler(restEvent({ path: '/me', sub: 'sub-1' }));
   assert.equal(res.statusCode, 200);
-  assert.deepEqual(parse(res), profile);
+  // Migration 014 — resolved from the caller's own users.locale, no extra query.
+  assert.deepEqual(parse(res), { ...profile, gender_name: 'Female', condition_name: 'General Wellness' });
 });
 
 // ---------------------------------------------------------------------------
@@ -608,7 +613,7 @@ test('a PUT that finds no reminder touches no doses', async () => {
 
 test('listing reminders tops the window up', async () => {
   const pool = makePool([
-    { match: /SELECT r\.\*, l\.name as med_name/, result: { rows: [{ id: 42 }], rowCount: 1 } },
+    { match: /SELECT r\.\*, l\.name_en AS med_name_en/, result: { rows: [{ id: 42 }], rowCount: 1 } },
     { match: /INSERT INTO medication_doses/, result: { rows: [], rowCount: 2 } },
   ]);
   _setPoolForTests(pool);
@@ -621,7 +626,7 @@ test('listing reminders tops the window up', async () => {
 
 test('a failed top-up must not stop a patient seeing their medication list', async () => {
   const pool = makePool([
-    { match: /SELECT r\.\*, l\.name as med_name/, result: { rows: [{ id: 42 }], rowCount: 1 } },
+    { match: /SELECT r\.\*, l\.name_en AS med_name_en/, result: { rows: [{ id: 42 }], rowCount: 1 } },
     { match: /INSERT INTO medication_doses/, throws: new Error('materialisation exploded') },
   ]);
   _setPoolForTests(pool);
@@ -1274,11 +1279,12 @@ test('/debug/link clears the revocation columns when it re-links a revoked pair'
 
 test('GET /medication-library still lists the library', async () => {
   _setPoolForTests(makePool([
-    { match: /SELECT \* FROM medication_library/, result: { rows: [{ id: 1, name: 'Aspirin' }] } },
+    { match: /SELECT \* FROM medication_library/, result: { rows: [{ id: 1, name_en: 'Aspirin', name_zh_hant: null }] } },
   ]));
   const res = await handler(restEvent({ path: '/medication-library', sub: 'sub-1' }));
   assert.equal(res.statusCode, 200);
-  assert.deepEqual(parse(res), [{ id: 1, name: 'Aspirin' }]);
+  // An untranslated medicine falls back to English rather than rendering blank.
+  assert.deepEqual(parse(res), [{ id: 1, name_en: 'Aspirin', name_zh_hant: null, name: 'Aspirin' }]);
 });
 
 test('POST /medication-library actually inserts and returns 201', async () => {
@@ -1286,7 +1292,7 @@ test('POST /medication-library actually inserts and returns 201', async () => {
   _setPoolForTests(makePool([
     { match: /INSERT INTO medication_library/, result: (t, params) => {
         inserted = params;
-        return { rows: [{ id: 42, name: 'Aspirin', default_dosage: '100mg' }] };
+        return { rows: [{ id: 42, name_en: 'Aspirin', name_zh_hant: null, default_dosage: '100mg' }] };
       } },
   ]));
   const res = await handler(restEvent({
@@ -1294,7 +1300,7 @@ test('POST /medication-library actually inserts and returns 201', async () => {
     body: { name: '  Aspirin  ', default_dosage: ' 100mg ' },
   }));
   assert.equal(res.statusCode, 201);
-  assert.deepEqual(inserted, ['Aspirin', '100mg']); // trimmed
+  assert.deepEqual(inserted, ['Aspirin', null, '100mg']); // trimmed; legacy `name` still accepted as the English side
   assert.equal(parse(res).id, 42);
 });
 
@@ -2364,4 +2370,64 @@ test('a build that predates ?locale falls back to the stored users.locale', asyn
   const res = await handler(restEvent({ path: '/announcements', sub: 'sub-1' }));
   assert.equal(parse(res)[0].locale, 'en');
   assert.equal(parse(res)[0].title, 'Clinic closed Monday');
+});
+
+// ---------------------------------------------------------------------------
+// Migration 014 — localised vocabularies
+//
+// Every rule here fails silently: picking the wrong side shows a patient a
+// language they may not read, and a wrong fallback shows them nothing at all
+// where a medicine name should be. Neither throws and neither logs.
+// ---------------------------------------------------------------------------
+
+test('an explicit ?locale= beats the stored users.locale', async () => {
+  _setPoolForTests(makePool([
+    { match: /FROM conditions/, result: { rows: [{ id: 1, name_en: 'General Wellness', name_zh_hant: '一般健康' }] } },
+  ]));
+  const res = await handler(restEvent({ path: '/conditions', query: { locale: 'en' } }));
+  assert.equal(parse(res)[0].name, 'General Wellness');
+});
+
+test('AN UNTRANSLATED NAME FALLS BACK RATHER THAN RENDERING BLANK', async () => {
+  // The whole point of the nullable column: a half-translated vocabulary must
+  // stay usable. A null here would be a nameless option in a signup dropdown.
+  _setPoolForTests(makePool([
+    { match: /FROM conditions/, result: { rows: [{ id: 1, name_en: 'Thorn Toxicity', name_zh_hant: null }] } },
+  ]));
+  const res = await handler(restEvent({ path: '/conditions', query: { locale: 'zh-Hant' } }));
+  assert.equal(parse(res)[0].name, 'Thorn Toxicity');
+});
+
+test('a row with neither side is null rather than an empty string', async () => {
+  // Papering this over with '' would hide a genuinely broken row behind a blank
+  // that looks like a layout bug instead of missing data.
+  _setPoolForTests(makePool([
+    { match: /FROM conditions/, result: { rows: [{ id: 1, name_en: null, name_zh_hant: null }] } },
+  ]));
+  const res = await handler(restEvent({ path: '/conditions' }));
+  assert.equal(parse(res)[0].name, null);
+});
+
+test('an unknown locale falls to the default rather than resolving to nothing', async () => {
+  _setPoolForTests(makePool([
+    { match: /FROM genders/, result: { rows: [{ id: 1, name_en: 'Male', name_zh_hant: '男性' }] } },
+  ]));
+  const res = await handler(restEvent({ path: '/genders', query: { locale: 'kl' } }));
+  assert.equal(parse(res)[0].name, '男性');
+});
+
+test('POST /medication-library accepts both sides when they are given', async () => {
+  let inserted;
+  _setPoolForTests(makePool([
+    { match: /INSERT INTO medication_library/, result: (t, params) => {
+        inserted = params;
+        return { rows: [{ id: 7, name_en: 'Aspirin', name_zh_hant: '阿斯匹靈', default_dosage: '100mg' }] };
+      } },
+  ]));
+  const res = await handler(restEvent({
+    method: 'POST', path: '/medication-library', sub: 'sub-1',
+    body: { name_en: ' Aspirin ', name_zh_hant: ' 阿斯匹靈 ', default_dosage: '100mg' },
+  }));
+  assert.equal(res.statusCode, 201);
+  assert.deepEqual(inserted, ['Aspirin', '阿斯匹靈', '100mg']);
 });

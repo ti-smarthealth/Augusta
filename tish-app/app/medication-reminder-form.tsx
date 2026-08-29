@@ -41,6 +41,8 @@ import { scheduleMedicationNotifications } from '@/utils/notification-helper';
 import ActiveProfileBadge from '@/components/active-profile-badge';
 import { useAuth } from '@/context/AuthContext';
 import { a11yLang, heading } from '@/utils/accessibility';
+import { announcementLocaleFrom } from '@/utils/announcements';
+import { localisedName } from '@/utils/vocabulary';
 
 
 type MealTiming = 'before' | 'after' | 'none';
@@ -84,7 +86,8 @@ const SNOOZE_OPTIONS = [5, 10, 15, 30];
 export default function MedicationReminderForm() {
     const router = useRouter();
     const params = useLocalSearchParams();
-    const { t } = useTranslation();
+    const { t, i18n } = useTranslation();
+    const vocabularyLocale = announcementLocaleFrom(i18n.language);
     const { activeDependent, user } = useAuth();
     const [selectedSound, setSelectedSound] = useState(DEFAULT_SOUND_KEY);
     const previewPlayer = useRef<AudioPlayer | null>(null);
@@ -128,7 +131,7 @@ export default function MedicationReminderForm() {
     };
 
     // --- FORM STATE ---
-    const [selectedMed, setSelectedMed] = useState<any>(initialData ? { id: initialData.med_id, name: initialData.med_name, default_dosage: '' } : null);
+    const [selectedMed, setSelectedMed] = useState<any>(initialData ? { id: initialData.med_id, name: initialData.med_name, name_en: initialData.med_name_en, name_zh_hant: initialData.med_name_zh_hant, default_dosage: '' } : null);
     const [dosage, setDosage] = useState(initialData?.selected_dosage || '');
     const [customDosage, setCustomDosage] = useState('');
     const [frequencyDays, setFrequencyDays] = useState(initialData?.frequency_days?.toString() || '1');
@@ -418,12 +421,12 @@ export default function MedicationReminderForm() {
                         onDismiss={() => setMedMenuVisible(false)}
                         anchor={
                             <Button mode="outlined" onPress={() => setMedMenuVisible(true)} style={styles.pickerButton} icon="pill" contentStyle={{ height: 50 }} textColor={selectedMed ? COLORS.ink : COLORS.slate}>
-                                {selectedMed ? selectedMed.name : t('medicationReminderForm.chooseMedication')}
+                                {selectedMed ? (localisedName(selectedMed, 'name', vocabularyLocale) ?? selectedMed.name) : t('medicationReminderForm.chooseMedication')}
                             </Button>
                         }
                     >
                         {library.map(m => (
-                            <Menu.Item key={m.id} onPress={() => { setSelectedMed(m); setDosage(''); setMedMenuVisible(false); setErrors({ ...errors, med: false }); }} title={m.name} leadingIcon="pill" />
+                            <Menu.Item key={m.id} onPress={() => { setSelectedMed(m); setDosage(''); setMedMenuVisible(false); setErrors({ ...errors, med: false }); }} title={localisedName(m, 'name', vocabularyLocale) ?? ''} leadingIcon="pill" />
                         ))}
                     </Menu>
                     <HelperText type="error" visible={errors.med} style={styles.helper}>{t('common.required')}</HelperText>

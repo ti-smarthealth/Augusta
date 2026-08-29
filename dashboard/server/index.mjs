@@ -70,6 +70,10 @@ export function requiredEnvFor(routeName) {
     case 'getPatientAdherence':
     case 'getDailyOpens':
     case 'getCrashes':
+    case 'listVocabulary':
+    case 'createVocabularyEntry':
+    case 'updateVocabularyEntry':
+    case 'deleteVocabularyEntry':
       return [...DB_ENV, 'ALLOWED_ORIGIN'];
     case 'getTranslations':
     case 'putTranslations':
@@ -103,6 +107,46 @@ export const ALLOWED_TABLES = [
   'appointment_statuses',
   'announcements',
 ];
+
+// ---------------------------------------------------------------------------
+// Localised vocabularies (migration 014)
+// ---------------------------------------------------------------------------
+
+/**
+ * The three lookup tables whose names reach a patient's screen.
+ *
+ * **Keyed by a slug the client sends, resolved to a table name here and never
+ * anywhere else.** The table is interpolated into SQL, so it must come from
+ * this object rather than from the URL — the same rule `isAllowedTable` exists
+ * for on the read-only viewer.
+ *
+ * `inUseMessage` is per-vocabulary because the 409 has to tell staff what is
+ * actually blocking the delete, and "used by one or more articles" would be
+ * nonsense for a gender.
+ */
+export const VOCABULARIES = {
+  genders: {
+    table: 'genders',
+    columns: [],
+    inUseMessage: 'That gender is still selected on one or more profiles.',
+  },
+  conditions: {
+    table: 'conditions',
+    columns: [],
+    inUseMessage: 'That condition is still selected on one or more profiles.',
+  },
+  medications: {
+    table: 'medication_library',
+    // The library carries a dosage list alongside the name; the other two are
+    // name-only, and a column list is what keeps one handler serving all three.
+    columns: ['default_dosage'],
+    inUseMessage: 'That medicine is still used by one or more reminders.',
+  },
+};
+
+export function vocabularyFor(slug) {
+  return Object.prototype.hasOwnProperty.call(VOCABULARIES, slug) ? VOCABULARIES[slug] : null;
+}
 
 // ---------------------------------------------------------------------------
 // Announcements
@@ -488,6 +532,19 @@ export function routeOf(method, path) {
   if (method === 'GET' && adherenceMatch) return { name: 'getPatientAdherence', userId: Number(adherenceMatch[1]) };
   if (method === 'GET' && clean === '/daily-opens') return { name: 'getDailyOpens' };
   if (method === 'GET' && clean === '/crashes') return { name: 'getCrashes' };
+
+  // Migration 014 — one family for genders, conditions and the medication
+  // library. The slug is validated against VOCABULARIES before it reaches SQL.
+  const vocabListMatch = clean.match(/^\/vocabularies\/([a-z-]+)$/);
+  if (vocabListMatch) {
+    if (method === 'GET') return { name: 'listVocabulary', vocabulary: vocabListMatch[1] };
+    if (method === 'POST') return { name: 'createVocabularyEntry', vocabulary: vocabListMatch[1] };
+  }
+  const vocabItemMatch = clean.match(/^\/vocabularies\/([a-z-]+)\/(\d+)$/);
+  if (vocabItemMatch) {
+    if (method === 'PUT') return { name: 'updateVocabularyEntry', vocabulary: vocabItemMatch[1], id: Number(vocabItemMatch[2]) };
+    if (method === 'DELETE') return { name: 'deleteVocabularyEntry', vocabulary: vocabItemMatch[1], id: Number(vocabItemMatch[2]) };
+  }
   // TELEMETRY.md §4 — Metabase is expected to be off between beta programmes,
   // so starting it is a routine action rather than an ops task.
   if (method === 'GET' && clean === '/alarms') return { name: 'getAlarms' };
@@ -754,6 +811,103 @@ export async function handler(event) {
           WHERE day BETWEEN $1::date AND $2::date
           ORDER BY day`, [from, to]);
         return json(200, { opens: res.rows });
+      }
+
+      // --- Localised vocabularies (migration 014) -------------------------
+      //
+      // Genders, conditions and medicine names reach a patient's screen but
+      // live in lookup rows, so they were the last strings the app showed that
+      // no translation file could reach. Staff edit both sides here; the app
+      // resolves per reader and falls back to English, so a half-translated
+      // vocabulary is usable rather than blank.
+      case 'listVocabulary': {
+        const vocab = vocabularyFor(route.vocabulary);
+        if (!vocab) return json(404, { error: `Unknown vocabulary: ${route.vocabulary}` });
+        const db = getPool();
+        const extra = vocab.columns.length ? `, ${vocab.columns.join(', ')}` : '';
+        const res = await db.query(
+          `SELECT id, name_en, name_zh_hant${extra} FROM ${vocab.table} ORDER BY name_en ASC`);
+        return json(200, { entries: res.rows, vocabulary: route.vocabulary });
+      }
+
+      case 'createVocabularyEntry':
+      case 'updateVocabularyEntry': {
+        const vocab = vocabularyFor(route.vocabulary);
+        if (!vocab) return json(404, { error: `Unknown vocabulary: ${route.vocabulary}` });
+        const db = getPool();
+        let payload;
+        try {
+          payload = JSON.parse(event.body ?? '');
+        } catch {
+          return json(400, { error: 'Request body must be JSON' });
+        }
+
+        // English is required and Chinese is not, which is the whole shape of
+        // the feature: `name_en` is the natural key every row is found by, and
+        // a nullable translation is what lets staff add an entry now and
+        // translate it later without the app rendering a blank in between.
+        const nameEn = isFilled(payload?.name_en) ? payload.name_en.trim() : '';
+        if (!nameEn) return json(400, { error: 'name_en is required.', code: 'NAME_EN_REQUIRED' });
+        const nameZh = isFilled(payload?.name_zh_hant) ? payload.name_zh_hant.trim() : null;
+
+        // Only the columns this vocabulary declares, so a stray field in the
+        // body cannot reach a table that has no such column.
+        const extraValues = vocab.columns.map((c) => (isFilled(payload?.[c]) ? payload[c].trim() : null));
+        for (const [i, c] of vocab.columns.entries()) {
+          if (extraValues[i] === null) return json(400, { error: `${c} is required.`, code: 'FIELD_REQUIRED', field: c });
+        }
+
+        try {
+          if (route.name === 'createVocabularyEntry') {
+            const cols = ['name_en', 'name_zh_hant', ...vocab.columns];
+            const holders = cols.map((_, i) => `$${i + 1}`).join(', ');
+            const res = await db.query(
+              `INSERT INTO ${vocab.table} (${cols.join(', ')}) VALUES (${holders}) RETURNING id, ${cols.join(', ')}`,
+              [nameEn, nameZh, ...extraValues]);
+            return json(201, { entry: res.rows[0] });
+          }
+
+          const sets = ['name_en = $1', 'name_zh_hant = $2',
+            ...vocab.columns.map((c, i) => `${c} = $${i + 3}`)];
+          const res = await db.query(
+            `UPDATE ${vocab.table} SET ${sets.join(', ')} WHERE id = $${vocab.columns.length + 3}
+             RETURNING id, name_en, name_zh_hant${vocab.columns.length ? `, ${vocab.columns.join(', ')}` : ''}`,
+            [nameEn, nameZh, ...extraValues, route.id]);
+          if (res.rowCount === 0) return json(404, { error: `No entry with id ${route.id}` });
+          return json(200, { entry: res.rows[0] });
+        } catch (e) {
+          // Migration 014's unique index on lower(name_en). Genders and
+          // conditions have one; the medication library deliberately does not.
+          if (e?.code === '23505') {
+            return json(409, {
+              error: 'Another entry already uses that English name.',
+              code: 'NAME_IN_USE',
+            });
+          }
+          throw e;
+        }
+      }
+
+      case 'deleteVocabularyEntry': {
+        const vocab = vocabularyFor(route.vocabulary);
+        if (!vocab) return json(404, { error: `Unknown vocabulary: ${route.vocabulary}` });
+        const db = getPool();
+        try {
+          const res = await db.query(`DELETE FROM ${vocab.table} WHERE id = $1 RETURNING id`, [route.id]);
+          if (res.rowCount === 0) return json(404, { error: `No entry with id ${route.id}` });
+          return json(200, { deleted: route.id });
+        } catch (e) {
+          // Same two codes as deleteAnnouncementType, and for the same reason:
+          // 23001 is an explicit RESTRICT, 23503 the NO ACTION default. These
+          // tables are referenced by users.gender_id / condition_id and by
+          // medication_reminders.med_id, none of which cascade — deleting a
+          // gender somebody has selected must fail loudly rather than blank
+          // their profile.
+          if (e?.code === '23001' || e?.code === '23503') {
+            return json(409, { error: vocab.inUseMessage, code: 'ENTRY_IN_USE' });
+          }
+          throw e;
+        }
       }
 
       case 'getCrashes': {

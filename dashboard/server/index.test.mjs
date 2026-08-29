@@ -995,3 +995,102 @@ test('/alarms is behind the approval gate', async (t) => {
   assert.equal(res.statusCode, 403)
   assert.equal(called, false)
 })
+
+// ---------------------------------------------------------------------------
+// Localised vocabularies (migration 014)
+// ---------------------------------------------------------------------------
+
+test('AN UNKNOWN VOCABULARY IS 404, NEVER A TABLE NAME', async () => {
+  // The slug is interpolated into SQL. It has to come from the allowlist and
+  // never from the URL — the same rule the read-only table viewer follows.
+  _setPoolForTests(makePool([]));
+  for (const slug of ['users', 'pg-catalog', 'nonsense']) {
+    const res = await handler(httpEvent({ path: `/vocabularies/${slug}` }));
+    assert.equal(res.statusCode, 404, slug);
+  }
+  assert.equal(pool.calls.length, 0, 'no query should be attempted for an unknown vocabulary');
+});
+
+test('GET /vocabularies/genders lists both languages', async () => {
+  let text;
+  _setPoolForTests(makePool([
+    { match: /FROM genders/, result: (t) => {
+        text = t;
+        return { rows: [{ id: 1, name_en: 'Female', name_zh_hant: '女性' }] };
+      } },
+  ]));
+  const res = await handler(httpEvent({ path: '/vocabularies/genders' }));
+  assert.equal(res.statusCode, 200);
+  assert.deepEqual(parse(res).entries, [{ id: 1, name_en: 'Female', name_zh_hant: '女性' }]);
+  // Ordered by the English name so the editor list is stable regardless of who
+  // is reading it.
+  assert.match(text, /ORDER BY name_en ASC/);
+});
+
+test('the medication library carries its dosage column and the others do not', async () => {
+  let medText, genderText;
+  _setPoolForTests(makePool([
+    { match: /FROM medication_library/, result: (t) => { medText = t; return { rows: [] }; } },
+    { match: /FROM genders/, result: (t) => { genderText = t; return { rows: [] }; } },
+  ]));
+  await handler(httpEvent({ path: '/vocabularies/medications' }));
+  await handler(httpEvent({ path: '/vocabularies/genders' }));
+  assert.match(medText, /default_dosage/);
+  assert.doesNotMatch(genderText, /default_dosage/);
+});
+
+test('ENGLISH IS REQUIRED AND CHINESE IS NOT', async () => {
+  // The asymmetry is the feature: name_en is the key every row is found by,
+  // and a nullable translation is what lets staff add now and translate later.
+  _setPoolForTests(makePool([
+    { match: /INSERT INTO conditions/, result: { rows: [{ id: 9, name_en: 'Vertigo', name_zh_hant: null }] } },
+  ]));
+  const missing = await handler(httpEvent({
+    method: 'POST', path: '/vocabularies/conditions', body: { name_zh_hant: '暈眩' },
+  }));
+  assert.equal(missing.statusCode, 400);
+  assert.equal(parse(missing).code, 'NAME_EN_REQUIRED');
+
+  const ok = await handler(httpEvent({
+    method: 'POST', path: '/vocabularies/conditions', body: { name_en: '  Vertigo  ' },
+  }));
+  assert.equal(ok.statusCode, 201);
+  assert.equal(parse(ok).entry.id, 9);
+});
+
+test('a duplicate English name is a 409, not a 500', async () => {
+  const dup = Object.assign(new Error('duplicate key'), { code: '23505' });
+  _setPoolForTests(makePool([{ match: /INSERT INTO genders/, result: () => { throw dup; } }]));
+  const res = await handler(httpEvent({
+    method: 'POST', path: '/vocabularies/genders', body: { name_en: 'Female' },
+  }));
+  assert.equal(res.statusCode, 409);
+  assert.equal(parse(res).code, 'NAME_IN_USE');
+});
+
+test('DELETING AN ENTRY SOMEBODY IS USING FAILS LOUDLY', async () => {
+  // users.gender_id does not cascade. Blanking a patient's profile because an
+  // administrator tidied a list would be the worst possible outcome here.
+  for (const code of ['23001', '23503']) {
+    const inUse = Object.assign(new Error('still referenced'), { code });
+    _setPoolForTests(makePool([{ match: /DELETE FROM genders/, result: () => { throw inUse; } }]));
+    const res = await handler(httpEvent({ method: 'DELETE', path: '/vocabularies/genders/1' }));
+    assert.equal(res.statusCode, 409, code);
+    assert.equal(parse(res).code, 'ENTRY_IN_USE');
+    // The message names what is blocking it, so staff know what to fix.
+    assert.match(parse(res).error, /profile/i);
+  }
+});
+
+test('deleting something that is not there is a 404', async () => {
+  _setPoolForTests(makePool([{ match: /DELETE FROM conditions/, result: { rowCount: 0, rows: [] } }]));
+  const res = await handler(httpEvent({ method: 'DELETE', path: '/vocabularies/conditions/999' }));
+  assert.equal(res.statusCode, 404);
+});
+
+test('the vocabulary routes sit behind the same approval gate', async () => {
+  _setPoolForTests(makePool([]));
+  const res = await handler(httpEvent({ path: '/vocabularies/genders', groups: [] }));
+  assert.equal(res.statusCode, 403);
+  assert.equal(pool.calls.length, 0);
+});

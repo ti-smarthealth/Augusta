@@ -1,4 +1,4 @@
-import { Activity, ChartNoAxesCombined, Database, HeartPulse, Languages, LogOut, Newspaper } from "lucide-react"
+import { Activity, ChartNoAxesCombined, Database, HeartPulse, Languages, LogOut, Newspaper, Tags } from "lucide-react"
 import { NavLink, Outlet } from "react-router-dom"
 
 import { Badge } from "@/components/ui/badge"
@@ -11,6 +11,9 @@ import { cn } from "@/lib/utils"
 const NAV_ITEMS = [
   { to: "/news", label: "News", icon: Newspaper },
   { to: "/translations", label: "Translations", icon: Languages },
+  // Beside Translations on purpose: same job, different storage — these strings
+  // are database rows, so no locale file can reach them.
+  { to: "/vocabularies", label: "Vocabularies", icon: Tags },
   { to: "/adherence", label: "Adherence", icon: Activity },
   { to: "/analytics", label: "Analytics", icon: ChartNoAxesCombined },
   { to: "/database", label: "Database", icon: Database },

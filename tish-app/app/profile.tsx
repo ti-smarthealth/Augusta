@@ -14,6 +14,8 @@ import PlatformDatePicker from '../components/platform-date-picker';
 import { useAuth } from '../context/AuthContext';
 import { a11yLang } from '@/utils/accessibility';
 import { appLocale } from '@/utils/locale';
+import { announcementLocaleFrom } from '@/utils/announcements';
+import { localisedName } from '@/utils/vocabulary';
 import {
   DEFAULT_MEAL_TIMES,
   MEAL_LABEL_KEY,
@@ -47,14 +49,20 @@ interface GrantedAccess {
   other_username: string | null;
   other_full_name: string | null;
 }
+// Migration 014 — both sides travel, with `name` as the server's resolution.
+// Read them through `localisedName`, never directly.
 interface Gender {
   id: number;
-  name: string;
+  name?: string;
+  name_en?: string | null;
+  name_zh_hant?: string | null;
 }
 
 interface Condition {
   id: number;
-  name: string;
+  name?: string;
+  name_en?: string | null;
+  name_zh_hant?: string | null;
   description?: string;
 }
 const MEAL_ROWS: { key: MealKey; column: keyof MealTimes; icon: string }[] = [
@@ -69,6 +77,7 @@ export default function ProfileScreen() {
   const theme = useTheme();
   const router = useRouter();
   const { t, i18n } = useTranslation();
+  const vocabularyLocale = announcementLocaleFrom(i18n.language);
 
   // Data States
   const [handshakeInput, setHandshakeInput] = useState('');
@@ -284,14 +293,20 @@ export default function ProfileScreen() {
   };
 
   // 2. Mapping Logic: Find Name by ID
+  //
+  // Resolved from the row's per-locale pair (migration 014) rather than the
+  // flat `name` the server picked at fetch time, so switching language updates
+  // these immediately instead of leaving the profile in the old one.
   const getGenderName = () => {
     if (!user?.gender_id) return t('profile.notSpecified');
-    return genderList.find(g => g.id === user.gender_id)?.name || t('common.loading');
+    const row = genderList.find(g => g.id === user.gender_id);
+    return localisedName(row, 'name', vocabularyLocale) || t('common.loading');
   };
 
   const getConditionName = () => {
     if (!user?.condition_id) return t('profile.generalHealth');
-    return conditionList.find(c => c.id === user.condition_id)?.name || t('common.loading');
+    const row = conditionList.find(c => c.id === user.condition_id);
+    return localisedName(row, 'name', vocabularyLocale) || t('common.loading');
   };
 
   const respondToRequest = async (id: number, action: 'active' | 'decline') => {

@@ -9,6 +9,10 @@ import type {
   AnnouncementListResponse,
   AnnouncementType,
   AnnouncementTypeListResponse,
+  SaveVocabularyEntryRequest,
+  VocabularyEntry,
+  VocabularyListResponse,
+  VocabularySlug,
   AlarmsResponse,
   CrashesResponse,
   DailyOpensResponse,
@@ -65,6 +69,10 @@ type Api = {
   createAnnouncementType: (req: SaveAnnouncementTypeRequest) => Promise<{ type: AnnouncementType }>
   updateAnnouncementType: (id: number, req: SaveAnnouncementTypeRequest) => Promise<{ type: AnnouncementType }>
   deleteAnnouncementType: (id: number) => Promise<{ deleted: number }>
+  listVocabulary: (slug: VocabularySlug) => Promise<VocabularyListResponse>
+  createVocabularyEntry: (slug: VocabularySlug, req: SaveVocabularyEntryRequest) => Promise<{ entry: VocabularyEntry }>
+  updateVocabularyEntry: (slug: VocabularySlug, id: number, req: SaveVocabularyEntryRequest) => Promise<{ entry: VocabularyEntry }>
+  deleteVocabularyEntry: (slug: VocabularySlug, id: number) => Promise<{ deleted: number }>
   listAdherencePatients: () => Promise<AdherencePatientListResponse>
   getPatientAdherence: (userId: number, range: { from: string; to: string }) => Promise<AdherenceResponse>
   getDailyOpens: (range: { from: string; to: string }) => Promise<DailyOpensResponse>
@@ -108,6 +116,13 @@ function useRealApi(): Api {
     deleteAnnouncement: (id) =>
       request<{ deleted: number }>(token, `/announcements/${id}`, { method: "DELETE" }),
     listAnnouncementTypes: () => request<AnnouncementTypeListResponse>(token, "/announcement-types"),
+    listVocabulary: (slug) => request<VocabularyListResponse>(token, `/vocabularies/${slug}`),
+    createVocabularyEntry: (slug, req) =>
+      request<{ entry: VocabularyEntry }>(token, `/vocabularies/${slug}`, { method: "POST", body: JSON.stringify(req) }),
+    updateVocabularyEntry: (slug, id, req) =>
+      request<{ entry: VocabularyEntry }>(token, `/vocabularies/${slug}/${id}`, { method: "PUT", body: JSON.stringify(req) }),
+    deleteVocabularyEntry: (slug, id) =>
+      request<{ deleted: number }>(token, `/vocabularies/${slug}/${id}`, { method: "DELETE" }),
     createAnnouncementType: (req) =>
       request<{ type: AnnouncementType }>(token, "/announcement-types", {
         method: "POST",

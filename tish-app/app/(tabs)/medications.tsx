@@ -2,6 +2,8 @@ import ProfileHeader from '@/components/profile-header';
 import { useAuth } from '@/context/AuthContext';
 import { useNotificationSync } from '@/hooks/use-notification-sync';
 import { apiRequest } from '@/utils/api';
+import { announcementLocaleFrom } from '@/utils/announcements';
+import { localisedName } from '@/utils/vocabulary';
 import { missedDoses } from '@/utils/doses';
 import type { DoseRow } from '@/utils/doses';
 import { cancelMedicationNotifications, scheduleMedicationNotifications } from '@/utils/notification-helper';
@@ -21,7 +23,8 @@ const MISSED_WINDOW_DAYS = 7;
 
 export default function MedicationsScreen() {
   const router = useRouter();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const vocabularyLocale = announcementLocaleFrom(i18n.language);
   const { activeDependent, user } = useAuth();
   const { syncFor } = useNotificationSync();
   const [reminders, setReminders] = useState<any[]>([]);
@@ -211,7 +214,7 @@ export default function MedicationsScreen() {
                       {at.toLocaleTimeString(appLocale(), { hour: '2-digit', minute: '2-digit' })}
                     </Text>
                     <Text style={styles.missedWhat} numberOfLines={1}>
-                      {dose.med_name || t('alarmOverlay.unknownMedication')}
+                      {localisedName(dose, 'med_name', vocabularyLocale) || t('alarmOverlay.unknownMedication')}
                       {dose.selected_dosage ? ` • ${dose.selected_dosage}` : ''}
                     </Text>
                   </View>
@@ -259,7 +262,7 @@ export default function MedicationsScreen() {
                         <MaterialCommunityIcons aria-hidden name="pill" size={24} color={isActive ? COLORS.primary : COLORS.secondary} />
                       </View>
                       <View style={styles.mainInfo}>
-                        <Text style={styles.medName}>{item.med_name}</Text>
+                        <Text style={styles.medName}>{localisedName(item, 'med_name', vocabularyLocale)}</Text>
                         <Text style={styles.medSub}>{item.selected_dosage} • {t('medications.frequencyEvery', { count: item.frequency_days })}</Text>
                       </View>
                       <View style={styles.actionGroup}>
@@ -267,7 +270,7 @@ export default function MedicationsScreen() {
                           value={isActive}
                           onValueChange={() => toggleStatus(item.id, item.status)}
                           thumbColor={isActive ? COLORS.primary : COLORS.secondary}
-                          accessibilityLabel={t('a11y.medications.toggleReminder', { name: item.med_name })} {...a11yLang()}
+                          accessibilityLabel={t('a11y.medications.toggleReminder', { name: localisedName(item, 'med_name', vocabularyLocale) })} {...a11yLang()}
                         />
                         <IconButton
                           icon={isExpanded ? "chevron-up" : "chevron-down"}

@@ -32,6 +32,37 @@ export interface SaveTranslationsResponse {
  * The labels live here rather than in the locale files because a category
  * invented this afternoon has no translation key and never will.
  */
+/**
+ * The three lookup vocabularies whose names reach a patient's screen
+ * (migration 014). The slug is what the API routes on.
+ */
+export const VOCABULARIES = ["genders", "conditions", "medications"] as const
+export type VocabularySlug = (typeof VOCABULARIES)[number]
+
+/**
+ * One entry. `name_en` is the natural key and is required; `name_zh_hant` is
+ * nullable on purpose — staff can add an entry now and translate it later, and
+ * the app falls back to English rather than rendering a blank in between.
+ */
+export interface VocabularyEntry {
+  id: number
+  name_en: string
+  name_zh_hant: string | null
+  /** Medication library only; the other two vocabularies are name-only. */
+  default_dosage?: string
+}
+
+export interface VocabularyListResponse {
+  entries: VocabularyEntry[]
+  vocabulary: VocabularySlug
+}
+
+export interface SaveVocabularyEntryRequest {
+  name_en: string
+  name_zh_hant: string | null
+  default_dosage?: string
+}
+
 export interface AnnouncementType {
   id: number
   label_en: string

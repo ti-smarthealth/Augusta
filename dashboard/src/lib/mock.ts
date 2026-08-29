@@ -13,6 +13,10 @@ import type {
   AnnouncementListResponse,
   AnnouncementType,
   AnnouncementTypeListResponse,
+  SaveVocabularyEntryRequest,
+  VocabularyEntry,
+  VocabularyListResponse,
+  VocabularySlug,
   AdherenceDose,
   Alarm,
   AlarmsResponse,
@@ -141,6 +145,30 @@ function applyToMock(req: SaveAnnouncementRequest, existing?: Announcement): Ann
   }
 }
 
+/**
+ * Migration 014 — the localised vocabularies. Deliberately seeded
+ * half-translated: an entry with a null zh-Hant is the state the editor most
+ * needs to show clearly, and the one the app has to fall back for.
+ */
+const mockVocabularies: Record<VocabularySlug, VocabularyEntry[]> = {
+  genders: [
+    { id: 1, name_en: 'Male', name_zh_hant: '男性' },
+    { id: 2, name_en: 'Female', name_zh_hant: '女性' },
+    { id: 3, name_en: 'Non-binary', name_zh_hant: '非二元性別' },
+    { id: 4, name_en: 'Prefer not to say', name_zh_hant: null },
+  ],
+  conditions: [
+    { id: 1, name_en: 'Acute Mission Stress', name_zh_hant: '急性任務壓力' },
+    { id: 2, name_en: 'Telepathic Overload', name_zh_hant: null },
+    { id: 3, name_en: 'General Wellness', name_zh_hant: '一般健康' },
+  ],
+  medications: [
+    { id: 1, name_en: 'Anti-Telepathy Serum', name_zh_hant: '抗心靈感應血清', default_dosage: '200mg, 500mg' },
+    { id: 2, name_en: 'Starlight Stamina Mints', name_zh_hant: null, default_dosage: '5mg' },
+  ],
+}
+let nextVocabularyId = 100
+
 export const mockApi = {
   async getTranslations(): Promise<TranslationsResponse> {
     await delay(400)
@@ -201,6 +229,35 @@ export const mockApi = {
       type_color: typeById(a.type_id)?.color ?? null,
     }))
     return { announcements: structuredClone(withLabels), types: structuredClone(mockTypes) }
+  },
+
+
+
+  async listVocabulary(slug: VocabularySlug): Promise<VocabularyListResponse> {
+    await delay(200)
+    return { entries: structuredClone(mockVocabularies[slug] ?? []), vocabulary: slug }
+  },
+
+  async createVocabularyEntry(slug: VocabularySlug, req: SaveVocabularyEntryRequest): Promise<{ entry: VocabularyEntry }> {
+    await delay(200)
+    const entry: VocabularyEntry = { id: nextVocabularyId++, ...req }
+    mockVocabularies[slug] = [...(mockVocabularies[slug] ?? []), entry]
+    return { entry: structuredClone(entry) }
+  },
+
+  async updateVocabularyEntry(slug: VocabularySlug, id: number, req: SaveVocabularyEntryRequest): Promise<{ entry: VocabularyEntry }> {
+    await delay(200)
+    const list = mockVocabularies[slug] ?? []
+    const i = list.findIndex((e) => e.id === id)
+    if (i === -1) throw new Error(`No entry with id ${id}`)
+    list[i] = { ...list[i], ...req }
+    return { entry: structuredClone(list[i]) }
+  },
+
+  async deleteVocabularyEntry(slug: VocabularySlug, id: number): Promise<{ deleted: number }> {
+    await delay(200)
+    mockVocabularies[slug] = (mockVocabularies[slug] ?? []).filter((e) => e.id !== id)
+    return { deleted: id }
   },
 
   async listAnnouncementTypes(): Promise<AnnouncementTypeListResponse> {

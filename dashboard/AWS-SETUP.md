@@ -9,22 +9,32 @@ been done, so it is a record of what exists and how to change it. Account
 
 ## The GitHub token
 
-**Installed and working** as of 2026-08-08 — `GET /translations` returns both
-locale files from `mcha291/Augusta` with live SHAs. Nothing is outstanding.
+**⚠ BROKEN since 2026-08-25, when the repository moved to the `ti-smarthealth`
+organization.** The installed token was a fine-grained PAT whose resource owner
+was the `mcha291` personal account, and a fine-grained PAT only ever grants
+repos belonging to its resource owner — so the transfer severed it. Until a
+replacement is installed, the localization editor fails as described below
+(generic 500 in the UI, `401`/`404` against api.github.com in CloudWatch).
 
-Note the expiry you chose: commits from the localization editor stop working the
-day it lapses, and the failure looks like a generic 500 in the UI with
-`401 Bad credentials` in CloudWatch. To rotate:
+To install a replacement (also the rotation procedure — the old token's expiry
+has the same symptom):
 
 1. GitHub → Settings → Developer settings → Fine-grained personal access tokens
    → **Generate new token**.
-2. Repository access: **only** `mcha291/Augusta`.
-3. Permissions: **Contents → Read and write**. Nothing else.
-4. Install it (the token never reaches the browser; it lives only in the Lambda):
+2. **Resource owner: `ti-smarthealth`** — this is the step the transfer
+   changed; a token owned by the personal account can no longer see the repo.
+   If the org is not offered in the dropdown, allow fine-grained PATs at
+   Organization settings → Third-party Access → Personal access tokens.
+3. Repository access: **only** `ti-smarthealth/Augusta`.
+4. Permissions: **Contents → Read and write**. Nothing else.
+5. Install it (the token never reaches the browser; it lives only in the Lambda):
 
 ```bash
-aws lambda update-function-configuration --region ap-east-2 --function-name tish-admin-translations --environment "Variables={GITHUB_REPO=mcha291/Augusta,GITHUB_LOCALES_DIR=tish-app/locales,ALLOWED_ORIGIN=https://admin.ti-smarthealth.com,GITHUB_TOKEN=$NEW_PAT}"
+aws lambda update-function-configuration --region ap-east-2 --function-name tish-admin-translations --environment "Variables={GITHUB_REPO=ti-smarthealth/Augusta,GITHUB_LOCALES_DIR=tish-app/locales,ALLOWED_ORIGIN=https://admin.ti-smarthealth.com,GITHUB_TOKEN=$NEW_PAT}"
 ```
+
+Note `GITHUB_REPO` moves to the new owner in the same command — the Lambda
+builds its API paths from it, so either half alone leaves the editor broken.
 
 Note the function name: the token goes on `tish-admin-translations`, **not**
 `tish-admin-api` — see the split below. `update-function-configuration`
@@ -261,6 +271,26 @@ were assumed by the original plan and neither is available:
   both; see `eventMethod`/`eventPath` in `server/index.mjs`. Consequences: the
   stage name is in the URL (`/prod`), and CORS preflight is a MOCK integration
   per resource rather than one API-level CORS block.
+
+  > **⚠ Adding a route is two places, and forgetting the second one fails in a
+  > way that does not look like a routing problem.** There is no `{proxy+}`
+  > here: every path is an explicit resource. A route added to
+  > `server/index.mjs` and deployed still has no resource, so the gateway
+  > answers before the Lambda is ever reached — and because the 403 carries no
+  > CORS headers, the browser reports it as **`Failed to fetch`**, which reads
+  > like the API is down rather than like a path that was never created. This
+  > cost a round of debugging on `GET /crashes` (2026-08-28).
+  >
+  > Each new path needs, on `0u10zqz4r0`: a resource; the method with
+  > `--authorization-type COGNITO_USER_POOLS --authorizer-id ws0bsp` and an
+  > `AWS_PROXY` integration to `tish-admin-api`; an `OPTIONS` method with a
+  > MOCK integration returning the four CORS headers (copy them from
+  > `/daily-opens` — the allowed origin is the custom domain only); and a
+  > deployment to stage `prod`. The blanket `apigateway-admin-invoke`
+  > permission on the Lambda already covers `0u10zqz4r0/*/*`, so no new Lambda
+  > permission is needed. **Allow ~30 seconds after deploying** before testing:
+  > the first preflight can still 403 while the stage propagates, which looks
+  > exactly like the mistake you just fixed.
 - **Amplify Hosting is in ap-northeast-2 (Seoul).** Only the build and control
   plane live there; the assets are served from CloudFront either way, so Taiwan
   users are not taking a Seoul round-trip. Seoul was chosen because the account's
@@ -369,7 +399,9 @@ Recorded, not fixed — these belong to the security plan rather than this setup
   A read-only Postgres role would be least privilege.
 - `pg` connects with `ssl: { rejectUnauthorized: false }`, so the database
   connection is encrypted but unauthenticated.
-- The `github-lambda-deploy` trust policy matches `repo:mcha291/*` — any repo
-  in the account, any ref — where `DEPLOY.md` documents two specific repos on
-  `refs/heads/main`. Whoever widened it may have had a reason; noting it because
-  the doc and reality disagree.
+- The `github-lambda-deploy` trust policy matches every repo in the
+  `ti-smarthealth` org, any ref (`repo:ti-smarthealth/*` plus its ID-suffixed
+  twin — see `DEPLOY.md` for why there are two patterns). Ported
+  behaviour-for-behaviour from the personal account's `repo:mcha291/*` when the
+  repo transferred, 2026-08-25. Narrowing to specific repos and
+  `refs/heads/main` remains the open least-privilege item.

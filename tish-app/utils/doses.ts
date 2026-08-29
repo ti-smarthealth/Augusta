@@ -19,7 +19,14 @@ export interface DoseRow {
   confirmed_by?: number | null;
   snoozed_until?: string | null;
   snooze_count?: number;
+  /**
+   * The server's resolution for the requesting locale, with the per-locale pair
+   * beside it (migration 014). Screens read these through `localisedName` so a
+   * language switch updates a list already in state.
+   */
   med_name?: string | null;
+  med_name_en?: string | null;
+  med_name_zh_hant?: string | null;
   selected_dosage?: string | null;
 }
 
