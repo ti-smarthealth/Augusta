@@ -2,7 +2,7 @@
   "expo": {
     "name": "tisoft-app",
     "slug": "tish",
-    "version": "1.1.0",
+    "version": "1.2.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "tisoftapp",
@@ -69,13 +69,29 @@
       "expo-font",
       "expo-audio",
       "expo-asset",
+      "expo-notifications",
       [
-        "expo-notifications",
+        "./plugins/with-platform-sounds",
         {
-          "sounds": [
-            "./assets/sounds/alarm_default.wav",
-            "./assets/sounds/alarm_emergency.wav",
-            "./assets/sounds/alarm_calm.wav"
+          "ios": [
+            "./assets/sounds/alarm_coffee_time.caf",
+            "./assets/sounds/alarm_digital_bounce.caf",
+            "./assets/sounds/alarm_good_morning_melody.caf",
+            "./assets/sounds/alarm_mission_start.caf",
+            "./assets/sounds/alarm_morning_chime.caf",
+            "./assets/sounds/alarm_ready_set_go.caf",
+            "./assets/sounds/alarm_sunrise_spark.caf",
+            "./assets/sounds/alarm_wake_up_steps.caf"
+          ],
+          "android": [
+            "./assets/sounds/alarm_coffee_time.ogg",
+            "./assets/sounds/alarm_digital_bounce.ogg",
+            "./assets/sounds/alarm_good_morning_melody.ogg",
+            "./assets/sounds/alarm_mission_start.ogg",
+            "./assets/sounds/alarm_morning_chime.ogg",
+            "./assets/sounds/alarm_ready_set_go.ogg",
+            "./assets/sounds/alarm_sunrise_spark.ogg",
+            "./assets/sounds/alarm_wake_up_steps.ogg"
           ]
         }
       ],

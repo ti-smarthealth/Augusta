@@ -621,6 +621,17 @@ export default function ProfileScreen() {
               />
             ))}
           </Menu>
+
+          {/* Which build and which over-the-air revision this phone is running.
+              Support cannot otherwise tell whether a fix has landed: the app
+              version does not move when JS ships over the air. */}
+          <List.Item
+            title={t('profile.about')}
+            description={t('profile.aboutDesc')}
+            left={p => <List.Icon {...p} icon="information-outline" color={COLORS.primary} />}
+            right={p => <List.Icon {...p} icon="chevron-right" />}
+            onPress={() => router.push('/about')}
+          />
         </Surface>
 
         <Button

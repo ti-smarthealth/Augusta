@@ -1,4 +1,4 @@
-import { SOUND_MAP } from '@/constants/sounds';
+import { SOUND_MAP, resolveSoundKey } from '@/constants/sounds';
 import { useAuth } from '@/context/AuthContext';
 import { useResolvedReminder } from '@/hooks/use-resolved-reminder';
 import { recordDoseAction } from '@/utils/dose-queue';
@@ -41,7 +41,7 @@ export default function AlarmOverlay({
   const { user } = useAuth();
   // The hook owns the player lifecycle (auto-freed on unmount); it re-creates
   // when the source changes, so keying it off the chosen sound is enough.
-  const player = useAudioPlayer(SOUND_MAP[soundKey] || SOUND_MAP['default']);
+  const player = useAudioPlayer(SOUND_MAP[resolveSoundKey(soundKey)]);
 
   // The sound comes from the payload rather than from here, deliberately: the OS
   // needs it at schedule time anyway, and it means the alarm is still audible

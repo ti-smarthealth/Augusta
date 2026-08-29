@@ -61,10 +61,11 @@ audience `sts.amazonaws.com`. After creation, replace its **trust policy** with
       "Action": "sts:AssumeRoleWithWebIdentity",
       "Condition": {
         "StringEquals": { "token.actions.githubusercontent.com:aud": "sts.amazonaws.com" },
+        "_comment_": "Both sub patterns are needed. The ti-smarthealth org sends GitHub's ID-suffixed subject format — repo:ti-smarthealth@321049237/Augusta@1179846297:ref:... — so the name-only pattern alone does NOT match; it is kept for the case where the org's claim format is ever switched back. Verified from CloudTrail, 2026-08-25, after the repo moved from the personal account (whose claims were name-only). Remove this key before pasting into IAM.",
         "StringLike": {
           "token.actions.githubusercontent.com:sub": [
-            "repo:mcha291/Augusta:ref:refs/heads/main",
-            "repo:mcha291/tish-dashboard:ref:refs/heads/main"
+            "repo:ti-smarthealth/*",
+            "repo:ti-smarthealth@321049237/*"
           ]
         }
       }

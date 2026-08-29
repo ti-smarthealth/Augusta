@@ -214,6 +214,8 @@
     "accessDeniedTitle": "拒絕存取",
     "accessDeniedMessage": "驗證碼錯誤。",
     "language": "語言",
+    "about": "關於本應用程式",
+    "aboutDesc": "版本與更新資訊",
     "mealTimesSection": "用餐時間",
     "mealTimesHint": "用於推算「晚餐前」或「早餐時」等提醒的實際響鈴時間。大致時間即可，隨時都能修改。",
     "mealTimeSaveFailed": "無法儲存該用餐時間，請再試一次。",
@@ -375,9 +377,14 @@
     "doseEscalationBody": "您照顧的對象可能錯過了一次服藥。點擊查看。"
   },
   "sounds": {
-    "standard": "標準",
-    "emergency": "緊急",
-    "calm": "舒緩"
+    "morningChime": "晨間鐘聲",
+    "goodMorningMelody": "早安旋律",
+    "sunriseSpark": "日出微光",
+    "coffeeTime": "咖啡時光",
+    "wakeUpSteps": "起床腳步",
+    "digitalBounce": "電子跳動",
+    "missionStart": "任務開始",
+    "readySetGo": "預備，開始！"
   },
   "alarmOverlay": {
     "reminderTitle": "提醒：該服藥了",
@@ -432,6 +439,15 @@
       "escalationOrderInvalid": "通報順序無效。",
       "timeFormatInvalid": "請以 HH:mm 格式輸入時間，例如 08:00。"
     }
+  },
+  "about": {
+    "title": "關於本應用程式",
+    "version": "應用程式版本",
+    "revision": "更新版本編號",
+    "updated": "更新時間",
+    "embedded": "無（原始安裝版本）",
+    "supportTitle": "聯絡客服時",
+    "supportHint": "請告知上方的更新版本編號。這能讓我們確認您使用的應用程式版本，通常是最快找出問題原因的方式。"
   },
   "news": {
     "title": "最新消息與公告",

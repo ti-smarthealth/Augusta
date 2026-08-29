@@ -17,7 +17,7 @@ import {
     TextInput,
     useTheme
 } from 'react-native-paper';
-import { SOUND_MAP, SOUND_OPTIONS } from '../constants/sounds';
+import { DEFAULT_SOUND_KEY, SOUND_MAP, SOUND_OPTIONS, resolveSoundKey } from '../constants/sounds';
 
 // Design System Imports
 import PlatformDatePicker from '../components/platform-date-picker';
@@ -86,7 +86,7 @@ export default function MedicationReminderForm() {
     const params = useLocalSearchParams();
     const { t } = useTranslation();
     const { activeDependent, user } = useAuth();
-    const [selectedSound, setSelectedSound] = useState('default');
+    const [selectedSound, setSelectedSound] = useState(DEFAULT_SOUND_KEY);
     const previewPlayer = useRef<AudioPlayer | null>(null);
 
     // Free the preview player when leaving the screen
@@ -95,7 +95,7 @@ export default function MedicationReminderForm() {
     // Play a preview when the user taps a sound chip
     const playPreview = (soundKey: string) => {
         previewPlayer.current?.remove();
-        const player = createAudioPlayer(SOUND_MAP[soundKey]);
+        const player = createAudioPlayer(SOUND_MAP[resolveSoundKey(soundKey)]);
         previewPlayer.current = player;
         player.play();
         setSelectedSound(soundKey);

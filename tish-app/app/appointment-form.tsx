@@ -33,7 +33,12 @@ export default function AppointmentFormScreen() {
   const params = useLocalSearchParams();
   const { t } = useTranslation();
   const { activeDependent } = useAuth();
-  const { activeField: dictatingField, start: startDictation, stop: stopDictation } = useVoiceDictation();
+  const {
+    activeField: dictatingField,
+    start: startDictation,
+    stop: stopDictation,
+    available: dictationAvailable,
+  } = useVoiceDictation();
 
   const isEdit = !!params.appointment;
   const initialData = isEdit ? JSON.parse(params.appointment as string) : null;
@@ -132,7 +137,11 @@ export default function AppointmentFormScreen() {
 
   const handleDescChange = (val: string) => { setDesc(val); setErrors({ ...errors, desc: false }); };
 
+  // No microphone when the build cannot dictate. A control whose only possible
+  // outcome is an apology is worse than its absence — and on a binary missing
+  // the native module this screen used to crash rather than render at all.
   const micIcon = (fieldKey: string, value: string, onChangeText: (val: string) => void) => (
+    !dictationAvailable ? undefined :
     <TextInput.Icon
       icon={dictatingField === fieldKey ? "microphone" : "microphone-outline"}
       color={dictatingField === fieldKey ? COLORS.primary : undefined}

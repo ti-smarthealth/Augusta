@@ -1,20 +1,55 @@
+import { Platform } from 'react-native';
+
 export const SOUND_MAP: Record<string, any> = {
-  'default': require('@/assets/sounds/default.mp3'),
-  'emergency': require('@/assets/sounds/emergency.mp3'),
-  'calm': require('@/assets/sounds/calm.mp3'),
+  'coffee_time': require('@/assets/sounds/coffee_time.mp3'),
+  'digital_bounce': require('@/assets/sounds/digital_bounce.mp3'),
+  'good_morning_melody': require('@/assets/sounds/good_morning_melody.mp3'),
+  'mission_start': require('@/assets/sounds/mission_start.mp3'),
+  'morning_chime': require('@/assets/sounds/morning_chime.mp3'),
+  'ready_set_go': require('@/assets/sounds/ready_set_go.mp3'),
+  'sunrise_spark': require('@/assets/sounds/sunrise_spark.mp3'),
+  'wake_up_steps': require('@/assets/sounds/wake_up_steps.mp3'),
 };
 
 export const SOUND_OPTIONS = [
-  { labelKey: 'sounds.standard', value: 'default', icon: 'bell-outline' },
-  { labelKey: 'sounds.emergency', value: 'emergency', icon: 'alert-decagram' },
-  { labelKey: 'sounds.calm', value: 'calm', icon: 'flower' },
+  { labelKey: 'sounds.morningChime', value: 'morning_chime', icon: 'bell-outline' },
+  { labelKey: 'sounds.goodMorningMelody', value: 'good_morning_melody', icon: 'music-note' },
+  { labelKey: 'sounds.sunriseSpark', value: 'sunrise_spark', icon: 'weather-sunset-up' },
+  { labelKey: 'sounds.coffeeTime', value: 'coffee_time', icon: 'coffee-outline' },
+  { labelKey: 'sounds.wakeUpSteps', value: 'wake_up_steps', icon: 'shoe-print' },
+  { labelKey: 'sounds.digitalBounce', value: 'digital_bounce', icon: 'sine-wave' },
+  { labelKey: 'sounds.missionStart', value: 'mission_start', icon: 'rocket-launch-outline' },
+  { labelKey: 'sounds.readySetGo', value: 'ready_set_go', icon: 'flag-checkered' },
 ] as const;
 
-export const DEFAULT_SOUND_KEY = 'default';
+export const DEFAULT_SOUND_KEY = 'morning_chime';
 
 /**
- * Notification sound filenames, bundled natively by the `expo-notifications`
- * config plugin block in app.json.
+ * The three keys this used to offer, mapped to their nearest replacement.
+ *
+ * `reminder_sound` is a free-text column (`backend/index.mjs`, DEFAULT
+ * `'default'`), so rows written before the sound library was replaced still
+ * hold `default` / `emergency` / `calm`. Every lookup below falls back to
+ * `DEFAULT_SOUND_KEY` on an unknown key, so those rows are never *broken* — but
+ * without this they would all collapse onto one sound and quietly discard a
+ * choice the user had made. Resolving them keeps the picker showing the
+ * closest match until the row is next saved.
+ */
+const LEGACY_SOUND_KEYS: Record<string, string> = {
+  'default': 'morning_chime',
+  'emergency': 'mission_start',
+  'calm': 'good_morning_melody',
+};
+
+/** Normalises any stored key — current, legacy or unrecognised — to a real one. */
+export function resolveSoundKey(soundKey?: string | null): string {
+  if (!soundKey) return DEFAULT_SOUND_KEY;
+  if (soundKey in SOUND_MAP) return soundKey;
+  return LEGACY_SOUND_KEYS[soundKey] ?? DEFAULT_SOUND_KEY;
+}
+
+/**
+ * Notification sound filenames, bundled natively by `plugins/with-platform-sounds`.
  *
  * These are deliberately *not* the SOUND_MAP files above. The app has two
  * unrelated sound paths: SOUND_MAP feeds expo-audio inside AlarmOverlay, which
@@ -22,24 +57,34 @@ export const DEFAULT_SOUND_KEY = 'default';
  * on delivery with the app closed. That path has constraints the overlay does
  * not:
  *
- *  - **iOS will not play MP3 as a notification sound.** It accepts PCM in
- *    .wav/.aiff/.caf only, and silently substitutes the default chime for
- *    anything else — so the .mp3s cannot simply be registered here. These are
- *    mono 44.1kHz PCM conversions of the same three sounds.
+ *  - **The two platforms accept disjoint formats, so the extension differs.**
+ *    iOS will not play MP3, Vorbis or AAC as a notification sound — it takes
+ *    Linear PCM, IMA4/ADPCM, µLaw or aLaw in .wav/.aiff/.caf only, and
+ *    silently substitutes the default chime for anything else. Android cannot
+ *    open Core Audio Format at all. So iOS gets `.caf` (IMA4) and Android gets
+ *    `.ogg` (Vorbis); see the plugin for why that split cannot live in
+ *    `app.json`'s `expo-notifications` block. Both share one basename, which is
+ *    what lets a single key derive either name.
  *  - **Android copies these into res/raw, where filenames become Java
- *    identifiers.** `default.wav` would generate `R.raw.default` and fail the
- *    build on a reserved word, hence the `alarm_` prefix.
+ *    identifiers.** The `alarm_` prefix keeps them clear of reserved words —
+ *    the previous `default.wav` would have generated `R.raw.default` and failed
+ *    the build outright.
  *  - **iOS caps notification sounds at 30 seconds**, falling back to the
- *    default beyond that. All three run 9–12s.
+ *    default beyond that. The longest of these runs 18.3s.
  */
-export const NOTIFICATION_SOUND_FILES: Record<string, string> = {
-  'default': 'alarm_default.wav',
-  'emergency': 'alarm_emergency.wav',
-  'calm': 'alarm_calm.wav',
-};
+export const NOTIFICATION_SOUND_EXTENSION = Platform.OS === 'ios' ? 'caf' : 'ogg';
 
 export function notificationSoundFile(soundKey?: string | null): string {
-  return NOTIFICATION_SOUND_FILES[soundKey || ''] || NOTIFICATION_SOUND_FILES[DEFAULT_SOUND_KEY];
+  return `alarm_${resolveSoundKey(soundKey)}.${NOTIFICATION_SOUND_EXTENSION}`;
+}
+
+/**
+ * Android wants the res/raw resource name, which is the filename with the
+ * extension dropped. Derived rather than written out so it cannot drift from
+ * `notificationSoundFile` when the encoding changes again.
+ */
+export function androidSoundResource(soundKey?: string | null): string {
+  return notificationSoundFile(soundKey).replace(/\.[^.]+$/, '');
 }
 
 /**
@@ -48,13 +93,22 @@ export function notificationSoundFile(soundKey?: string | null): string {
  * per-reminder sound choice needs one channel per sound, selected at schedule
  * time.
  *
- * Note these are new channel ids rather than the previous single
- * `medication-alarms`. A channel's sound is fixed when the channel is first
- * created and cannot be changed by a later app update, so any device that
- * already created `medication-alarms` would be stuck with the fallback sound
- * forever. New ids sidestep that.
+ * A channel's sound is fixed when the channel is first created and cannot be
+ * changed by a later app update, so a changed sound always needs a new channel
+ * id. That is already satisfied here: replacing the old three-sound library
+ * changed every key, and the ids are derived from the key — no device has seen
+ * `medication-alarms-morning_chime`. The stale `medication-alarms-default`,
+ * `-emergency` and `-calm` channels are deleted in `setupNotificationChannels`
+ * rather than left to sit in the user's notification settings.
  */
 export function channelIdForSound(soundKey?: string | null): string {
-  const key = soundKey && NOTIFICATION_SOUND_FILES[soundKey] ? soundKey : DEFAULT_SOUND_KEY;
-  return `medication-alarms-${key}`;
+  return `medication-alarms-${resolveSoundKey(soundKey)}`;
 }
+
+/** Channel ids from the retired three-sound library, deleted on next launch. */
+export const RETIRED_CHANNEL_IDS = [
+  'medication-alarms',
+  'medication-alarms-default',
+  'medication-alarms-emergency',
+  'medication-alarms-calm',
+];

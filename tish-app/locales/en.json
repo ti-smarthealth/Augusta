@@ -214,6 +214,8 @@
     "accessDeniedTitle": "Access Denied",
     "accessDeniedMessage": "Handshake code incorrect.",
     "language": "Language",
+    "about": "About this app",
+    "aboutDesc": "Version and update details",
     "mealTimesSection": "Meal Times",
     "mealTimesHint": "Used to work out when \"before dinner\" or \"with breakfast\" reminders should go off. Rough times are fine — you can change these any time.",
     "mealTimeSaveFailed": "Couldn't save that meal time. Please try again.",
@@ -375,9 +377,14 @@
     "doseEscalationBody": "Someone you care for may have missed a dose. Tap to check."
   },
   "sounds": {
-    "standard": "Standard",
-    "emergency": "Emergency",
-    "calm": "Calm"
+    "morningChime": "Morning Chime",
+    "goodMorningMelody": "Good Morning Melody",
+    "sunriseSpark": "Sunrise Spark",
+    "coffeeTime": "Coffee Time",
+    "wakeUpSteps": "Wake-Up Steps",
+    "digitalBounce": "Digital Bounce",
+    "missionStart": "Mission Start",
+    "readySetGo": "Ready, Set, Go!"
   },
   "alarmOverlay": {
     "reminderTitle": "REMINDER: MEDICATION DUE",
@@ -432,6 +439,15 @@
       "escalationOrderInvalid": "That escalation order isn’t valid.",
       "timeFormatInvalid": "Enter a time as HH:mm — for example 08:00."
     }
+  },
+  "about": {
+    "title": "About this app",
+    "version": "App version",
+    "revision": "Update revision",
+    "updated": "Updated on",
+    "embedded": "None (original install)",
+    "supportTitle": "IF YOU CONTACT SUPPORT",
+    "supportHint": "Please read out the update revision above. It tells us exactly which version of the app you are running, which is often the fastest way to work out what went wrong."
   },
   "news": {
     "title": "News & Announcements",

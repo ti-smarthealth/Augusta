@@ -1,7 +1,7 @@
 import * as Notifications from 'expo-notifications';
 import { Platform } from 'react-native';
 import { CRITICAL_ALERTS_ENTITLED } from '../constants/config';
-import { SOUND_OPTIONS, channelIdForSound, notificationSoundFile } from '../constants/sounds';
+import { RETIRED_CHANNEL_IDS, SOUND_OPTIONS, androidSoundResource, channelIdForSound, notificationSoundFile } from '../constants/sounds';
 import i18next from '../i18n';
 import { planAlarmsForReminder, planChainForward } from './alarm-schedule';
 import type { AlarmPlan } from './alarm-schedule';
@@ -90,15 +90,24 @@ Notifications.setNotificationHandler({
 export async function setupNotificationChannels() {
   if (Platform.OS !== 'android') return;
 
+  // Channels from the retired three-sound library. Their sound files no longer
+  // exist in res/raw, so leaving them would strand any still-scheduled alert on
+  // a channel that resolves to silence — and they would otherwise linger in the
+  // user's notification settings forever, since nothing else ever removes a
+  // channel. Deleting an id that was never created is a no-op.
+  for (const channelId of RETIRED_CHANNEL_IDS) {
+    await Notifications.deleteNotificationChannelAsync(channelId);
+  }
+
   for (const option of SOUND_OPTIONS) {
     await Notifications.setNotificationChannelAsync(channelIdForSound(option.value), {
       name: `Medication Alarms (${option.value})`,
       importance: Notifications.AndroidImportance.MAX,
       vibrationPattern: [0, 250, 250, 250],
       lightColor: '#6366F1',
-      // Bundled into res/raw by the expo-notifications plugin block in
-      // app.json. Android wants the name without the extension.
-      sound: notificationSoundFile(option.value).replace(/\.wav$/, ''),
+      // Bundled into res/raw by `plugins/with-platform-sounds`. Android wants
+      // the resource name, i.e. the filename without its extension.
+      sound: androidSoundResource(option.value),
 
       // 4.7e — this is Android's answer to the audibility question, and it is
       // what the platform gets instead of the D-9 burst (iOS-only, because the
