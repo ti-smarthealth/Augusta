@@ -12,6 +12,7 @@
       "infoPlist": {
         "NSSpeechRecognitionUsageDescription": "Allow $(PRODUCT_NAME) to use speech recognition to convert your voice to text.",
         "NSMicrophoneUsageDescription": "Allow $(PRODUCT_NAME) to use the microphone for voice dictation.",
+        "NSPhotoLibraryUsageDescription": "$(PRODUCT_NAME) does not use your photo library. This notice is required because an image component in the app is capable of loading photos from it.",
         "ITSAppUsesNonExemptEncryption": false,
         "UIBackgroundModes": [
           "remote-notification"
