@@ -657,13 +657,19 @@ export const RESET_SQL = (() => {
  */
 export const SEED_SQL = `
     INSERT INTO genders (name_en, name_zh_hant) VALUES ('Male', '男性'), ('Female', '女性'), ('Non-binary', '非二元性別'), ('Prefer not to say', '不願透露') ON CONFLICT (lower(name_en)) DO NOTHING;
-    INSERT INTO conditions (name_en, name_zh_hant) VALUES ('Acute Mission Stress', '急性任務壓力'), ('Telepathic Overload', '心靈感應超載'), ('Thorn Toxicity', '荊棘毒性'), ('General Wellness', '一般健康') ON CONFLICT (lower(name_en)) DO NOTHING;
+    -- No Chinese here, and that is a content decision rather than an omission
+    -- (migration 015): these names are clinical, so the wording belongs to
+    -- whoever owns the content. Staff fill them in on the Envars page; until
+    -- they do, the app falls back to English and the editor shows them as
+    -- untranslated, which is the prompt. Genders above keep theirs because that
+    -- vocabulary is closed and ordinary.
+    INSERT INTO conditions (name_en) VALUES ('Acute Mission Stress'), ('Telepathic Overload'), ('Thorn Toxicity'), ('General Wellness') ON CONFLICT (lower(name_en)) DO NOTHING;
     INSERT INTO appointment_statuses (id, label, color) VALUES (1, 'New', '#6366F1'), (2, 'Cancelled', '#EF4444'), (3, 'Missed', '#F59E0B'), (4, 'Completed', '#22C55E');
     -- Guarded like genders and conditions, because this table is preserved: a
     -- seed after a reset must not resurrect a category staff deleted, nor
     -- overwrite a label they rewrote.
     INSERT INTO announcement_types (label_en, label_zh_hant, color, sort_order) VALUES ('System Updates', '系統更新', '#6366F1', 1), ('News', '最新消息', '#22C55E', 2), ('Announcements', '公告', '#F59E0B', 3) ON CONFLICT (lower(label_en)) DO NOTHING;
-    INSERT INTO medication_library (name_en, name_zh_hant, default_dosage) VALUES ('Anti-Telepathy Serum', '抗心靈感應血清', '200mg, 500mg'), ('High-Grade Peanut Extract', '高純度花生萃取物', '30mg'), ('Starlight Stamina Mints', '星光耐力薄荷糖', '5mg');
+    INSERT INTO medication_library (name_en, default_dosage) VALUES ('Anti-Telepathy Serum', '200mg, 500mg'), ('High-Grade Peanut Extract', '30mg'), ('Starlight Stamina Mints', '5mg');
     INSERT INTO test_config (field_number, display_name, units) VALUES (1, 'Starlight Level', 'g/dL'), (2, 'Reflex Factor', 'ms'), (3, 'Telepathy Wave', 'Hz');
 `;
 

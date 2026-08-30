@@ -18,13 +18,16 @@ export function LandingPage({ onSignIn }: { onSignIn: () => void }) {
   return (
     <div className="flex min-h-screen items-center justify-center p-6">
       <div className="w-full max-w-md space-y-4">
-        <div className="text-center text-lg font-bold tracking-tight">Tish Admin</div>
+        <div className="text-center text-lg font-bold tracking-tight">
+          Titanium Initium Smart Healthcare
+        </div>
+        <div className="text-center text-sm text-muted-foreground">Administration</div>
 
         <Card>
           <CardHeader>
             <CardTitle>Staff sign-in</CardTitle>
             <CardDescription>
-              Internal tool for the Tish app. Accounts are approved by an administrator before
+              Internal tool for the Titanium Initium Smart Healthcare apps. Accounts are approved by an administrator before
               they can see any data.
             </CardDescription>
           </CardHeader>

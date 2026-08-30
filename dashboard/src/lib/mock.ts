@@ -158,12 +158,12 @@ const mockVocabularies: Record<VocabularySlug, VocabularyEntry[]> = {
     { id: 4, name_en: 'Prefer not to say', name_zh_hant: null },
   ],
   conditions: [
-    { id: 1, name_en: 'Acute Mission Stress', name_zh_hant: '急性任務壓力' },
+    { id: 1, name_en: 'Acute Mission Stress', name_zh_hant: null },
     { id: 2, name_en: 'Telepathic Overload', name_zh_hant: null },
-    { id: 3, name_en: 'General Wellness', name_zh_hant: '一般健康' },
+    { id: 3, name_en: 'General Wellness', name_zh_hant: null },
   ],
   medications: [
-    { id: 1, name_en: 'Anti-Telepathy Serum', name_zh_hant: '抗心靈感應血清', default_dosage: '200mg, 500mg' },
+    { id: 1, name_en: 'Anti-Telepathy Serum', name_zh_hant: null, default_dosage: '200mg, 500mg' },
     { id: 2, name_en: 'Starlight Stamina Mints', name_zh_hant: null, default_dosage: '5mg' },
   ],
 }

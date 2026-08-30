@@ -13,7 +13,14 @@ import { ApiError, useApi } from "@/lib/api"
 import type { SaveVocabularyEntryRequest, VocabularyEntry, VocabularySlug } from "@/lib/types"
 
 /**
- * The vocabularies a patient reads but no translation file can reach.
+ * Envars — the names a patient reads that no translation file can reach.
+ *
+ * **The screen says "Envars"; the API path and the types still say
+ * "vocabulary".** That is deliberate rather than half-finished: the HTTP path
+ * is wired to explicit API Gateway resources, so renaming it means recreating
+ * them, and having the client call one name while the wire uses another would
+ * be exactly the second-name-for-the-same-thing that migration 010 argues
+ * against. Renaming end to end is a small, separate change if it is wanted.
  *
  * **Why this page exists.** Everything the app writes itself lives in
  * `locales/*.json` and is edited on the Translations page. These three are
@@ -38,14 +45,14 @@ const TABS: { slug: VocabularySlug; label: string; blurb: string; hasDosage?: bo
   },
 ]
 
-export function VocabulariesPage() {
+export function EnvarsPage() {
   const [active, setActive] = useState<VocabularySlug>("genders")
   const tab = TABS.find((t) => t.slug === active)!
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Vocabularies</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Envars</h1>
         <p className="text-sm text-muted-foreground">
           Names that come from the database rather than the translation files — so they need
           translating here. Entries without Chinese still work: the app falls back to English.
@@ -65,12 +72,12 @@ export function VocabulariesPage() {
         ))}
       </div>
 
-      <VocabularyEditor key={active} slug={active} label={tab.label} blurb={tab.blurb} hasDosage={!!tab.hasDosage} />
+      <EnvarEditor key={active} slug={active} label={tab.label} blurb={tab.blurb} hasDosage={!!tab.hasDosage} />
     </div>
   )
 }
 
-function VocabularyEditor({
+function EnvarEditor({
   slug, label, blurb, hasDosage,
 }: { slug: VocabularySlug; label: string; blurb: string; hasDosage: boolean }) {
   const api = useApi()

@@ -98,7 +98,10 @@ export function SignUpPage() {
   return (
     <div className="flex min-h-screen items-center justify-center p-6">
       <div className="w-full max-w-md space-y-4">
-        <div className="text-center text-lg font-bold tracking-tight">Tish Admin</div>
+        <div className="text-center text-lg font-bold tracking-tight">
+          Titanium Initium Smart Healthcare
+        </div>
+        <div className="text-center text-sm text-muted-foreground">Administration</div>
 
         <Card>
           {stage === "form" && (

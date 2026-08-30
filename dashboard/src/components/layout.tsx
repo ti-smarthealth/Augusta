@@ -13,7 +13,7 @@ const NAV_ITEMS = [
   { to: "/translations", label: "Translations", icon: Languages },
   // Beside Translations on purpose: same job, different storage — these strings
   // are database rows, so no locale file can reach them.
-  { to: "/vocabularies", label: "Vocabularies", icon: Tags },
+  { to: "/envars", label: "Envars", icon: Tags },
   { to: "/adherence", label: "Adherence", icon: Activity },
   { to: "/analytics", label: "Analytics", icon: ChartNoAxesCombined },
   { to: "/database", label: "Database", icon: Database },
@@ -26,7 +26,10 @@ export function Layout() {
   return (
     <div className="flex min-h-screen">
       <aside className="flex w-56 flex-col border-r bg-muted/30 p-4">
-        <div className="mb-1 px-2 text-lg font-bold tracking-tight">Tish Admin</div>
+        {/* The sidebar is 224px wide, so this is the short form. The full name
+            is spelled out wherever there is room for it — the sign-in and
+            sign-up screens. */}
+        <div className="mb-1 px-2 text-lg font-bold tracking-tight">TISH Admin</div>
         <div className="mb-4 px-2">
           {MOCK && <Badge variant="secondary">mock data</Badge>}
         </div>

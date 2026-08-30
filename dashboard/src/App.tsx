@@ -10,7 +10,7 @@ import { AnalyticsPage } from "@/features/analytics/AnalyticsPage"
 import { DatabasePage } from "@/features/database/DatabasePage"
 import { HealthPage } from "@/features/health/HealthPage"
 import { NewsPage } from "@/features/news/NewsPage"
-import { VocabulariesPage } from "@/features/vocabularies/VocabulariesPage"
+import { EnvarsPage } from "@/features/envars/EnvarsPage"
 import { TranslationsPage } from "@/features/translations/TranslationsPage"
 import { useAdminAuth } from "@/lib/auth"
 import { missingConfig } from "@/lib/config"
@@ -116,7 +116,7 @@ export default function App() {
         <Route index element={<Navigate to="/news" replace />} />
         <Route path="/news" element={<NewsPage />} />
         <Route path="/translations" element={<TranslationsPage />} />
-        <Route path="/vocabularies" element={<VocabulariesPage />} />
+        <Route path="/envars" element={<EnvarsPage />} />
         <Route path="/database" element={<DatabasePage />} />
         <Route path="/adherence" element={<AdherencePage />} />
         <Route path="/analytics" element={<AnalyticsPage />} />
