@@ -174,7 +174,7 @@ each of them again:
 | An E2E flow proving an alarm fires | `HANDOFF.md` "Next" |
 | ~~On-call inbox subscribed to the alert topic~~ — **done: SMS 2026-09-08, email 2026-09-09.** What remains is raising the `$1` SNS spend cap so the SMS half cannot go quiet mid-incident | `docs/architecture` target diagram (`oncall`); `alarms.sh`; `MIGRATION.md` B1 |
 | Security posture | `PLAN.md` P0.1; `MIGRATION.md` D2, D5; `dashboard/AWS-SETUP.md` "Known gaps" — **no plan file exists** |
-| ~~Anchor date for non-daily materialisation~~ — **built 2026-09-08 (migration `016`), ⚠ not yet applied** | `PLAN.md` §0.6 |
+| ~~Anchor date for non-daily materialisation~~ — **done: built 2026-09-08, applied 2026-09-09** | `PLAN.md` §0.6 |
 | Device snooze follows the server's re-anchoring — **a standing decision, not a gap.** §0.6 settled in session 5 that the server stays the single authority; the trigger to revisit is a real caregiver reporting the duplicate | `PLAN.md` §0.6, §0.3 "smaller things" |
 | ~~Missed-dose list stops truncating at twenty~~ — **done 2026-09-08** | `PLAN.md` §0.3 "smaller things" |
 | ~~Escalation Lambdas deployed by CI~~ — **done 2026-09-08** | `.github/workflows/deploy-backend.yml` |

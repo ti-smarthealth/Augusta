@@ -162,13 +162,16 @@ Each of these was considered and declined; they are decisions, not gaps.
   and the telemetry rollup are each **two** Lambdas, and it is the first thing to
   understand before designing anything server-side.
 - **Schema changes go through a VPC-attached migration runner.** Deploying the
-  runner does not run anything; applying is a deliberate manual act. **Fifteen
-  applied**, verified against the live runner on 2026-09-08. `016_reminder_anchor_date`
-  exists in the tree and is deliberately not applied yet — it is still
-  uncommitted. Note that `tish-migrate status` reports only on the migration
-  files inside its own deployed zip, so a stale runner will report "nothing
-  pending" about files it has never seen; check its `LastModified` against
-  `git log` before believing the answer.
+  runner does not run anything; applying is a deliberate manual act. **Sixteen
+  applied**, none pending, verified against the live runner on 2026-09-09. Two
+  things about this mechanism that are easy to get wrong: `tish-migrate status`
+  reports only on the migration files inside *its own deployed zip*, so a stale
+  runner reports "nothing pending" about files it has never seen — check its
+  `LastModified` against `git log` before believing it. And because CI builds one
+  artifact for every backend function, a schema-dependent change should be
+  applied by deploying a **runner-only zip** (no `index.mjs`) to `tish-migrate`
+  first, rather than pushing and letting CI ship the handler alongside the
+  migration that has not run yet.
 - **CI deploys every Lambda** on push to `main` — the app backend, the migration
   runner, **both escalation functions**, the admin API, the dashboard SPA, the
   patient web app, the Cognito trigger and the telemetry Lambdas. The escalation

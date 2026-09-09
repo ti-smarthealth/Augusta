@@ -199,18 +199,23 @@ the code is identical in Paper 5.15.3.
 
 ## Next
 
-**⚠ Apply migration `016` before the next backend deploy.** `index.mjs` in the
-working tree selects `anchor_date`, and `deploy-backend.yml` ships the handler on
-push to `main` whether or not the migration ran — the `alarm_labels` failure mode
-(`PLAN.md` §0.6). 016 is additive and unread by deployed code, so applying it
-early is safe; deploying early is not.
+**Migrations are current: sixteen applied, none pending** — verified against the
+live runner on 2026-09-09. `016_reminder_anchor_date` is applied **ahead of** the
+handler that reads it, so the branch below can be merged and pushed without the
+ordering hazard.
 
-Everything through 015 **is** applied — verified against the live runner on
-2026-09-08 (`pending: []`). Worth knowing how that was confirmed, because the
-obvious check is not sufficient: `tish-migrate status` reports on the migration
-files in *its own deployed zip*, so a stale runner cheerfully reports "nothing
-pending" about files it has never seen. Check its `LastModified` against
-`git log` too.
+Two things about this mechanism that cost time if you rediscover them:
+
+- `tish-migrate status` reports on the migration files in *its own deployed zip*,
+  so a stale runner cheerfully reports "nothing pending" about files it has never
+  seen. Check its `LastModified` against `git log` too.
+- CI builds **one artifact for every backend function**, so pushing a migration
+  also ships the handler that depends on it, in the same deploy. For a
+  schema-dependent change, hand-deploy a runner-only zip first —
+  `migrate.mjs migrations package.json node_modules`, deliberately **without**
+  `index.mjs` — apply, then let CI ship the handler. `zip` is not installed on
+  this machine; the venv at `py/.venv` has a real Python and
+  `python -m zipfile -c` produces Lambda-compatible forward-slash entries.
 
 ```
 aws lambda invoke --function-name tish-migrate --region ap-east-2 \

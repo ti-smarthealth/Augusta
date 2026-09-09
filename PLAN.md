@@ -114,11 +114,21 @@ each row is otherwise as session 8 (2026-08-01) left it.
 > deployed it with 014 and 015 inside. **Re-check that timestamp against
 > `git log`, not just the `pending` list, whenever this question comes up again.**
 >
-> **`016_reminder_anchor_date` was written on 2026-09-08 and is not applied** —
-> correctly, since it is still uncommitted and has never reached the runner's zip.
-> `index.mjs` in the working tree now selects `anchor_date`, so **apply 016 before
-> the next backend deploy.** It is additive and unread by deployed code, so
-> applying early is safe; deploying early is the `alarm_labels` failure.
+> **`016_reminder_anchor_date` is applied — 2026-09-09.** Sixteen applied, none
+> pending, none orphaned. `medication_reminders.anchor_date` is live and `NULL`
+> on every existing row, which is the designed no-op: NULL coalesces to today, so
+> nothing changed for the rows that already existed. All three live reminders are
+> `frequency_days = 1` anyway, the case where server and device always agreed.
+>
+> **The ordering trap was sidestepped rather than survived, and the technique is
+> worth keeping.** `tish-migrate` can only apply migrations present in its *own*
+> deployed zip, and CI builds one artifact for every backend function — so the
+> obvious route (push, let CI deploy, then apply) ships `index.mjs` selecting
+> `anchor_date` before the column exists, which is the `alarm_labels` failure. The
+> way out is that the runner does not need the handler: a zip of
+> `migrate.mjs migrations package.json node_modules`, **deliberately without
+> `index.mjs`**, deployed to `tish-migrate` alone. The schema moves first and the
+> handler ships later against a database that is already ready.
 
 **Session-9 figures below were not re-checked and should not be quoted.** What
 was verified on 2026-09-08: `main` is at `5a5ca42` and **level with
@@ -281,9 +291,8 @@ file:
   hiding the remainder silently, which made a long absence look like a short one
   and is the opposite of the record D-4 asks for. 4 new tests, 2 locale keys ×
   plural forms in both files.
-- ~~**The anchor-date column for non-daily materialisation**~~ — **built
-  2026-09-08, migration `016` not yet applied.** See §0.6's finding; the fix is
-  described there.
+- ~~**The anchor-date column for non-daily materialisation**~~ — **done: built
+  2026-09-08, applied 2026-09-09.** See §0.6's finding.
 
 ---
 
@@ -1654,8 +1663,8 @@ revocation columns. The fixture was restored afterwards. Did not commit.
   schema change 5.1 could not make. **Worth doing with the next migration**;
   until then, treat the missed list as trustworthy for daily reminders only.
 
-  **✅ FIXED 2026-09-08 — migration `016_reminder_anchor_date.sql`, ⚠ written but
-  NOT YET APPLIED.** `medication_reminders.anchor_date` holds the local date the
+  **✅ FIXED — migration `016_reminder_anchor_date.sql`, written 2026-09-08 and
+  applied 2026-09-09.** `medication_reminders.anchor_date` holds the local date the
   reminder was created or last edited, and `materialiseDoses` now walks its
   series from that phase instead of from today. Three things worth knowing:
 
@@ -1673,11 +1682,14 @@ revocation columns. The fixture was restored afterwards. Did not commit.
     a 3-day reminder because somebody renamed its dosage would be a silent
     schedule change nobody asked for.
 
-  **⚠ Apply before deploying.** The handler selects a column that does not exist
-  until 016 runs — the `alarm_labels` failure recorded above, and the ordering
-  hazard `deploy-backend.yml` warns about in its own comments. 016 is additive
-  and unread by the currently deployed code, so applying it early is safe;
-  deploying early is not.
+  **Applied ahead of the handler, 2026-09-09**, so the deploy ordering hazard is
+  already discharged: the column exists and `index.mjs` can ship whenever. Done by
+  deploying a runner-only zip — `migrate.mjs migrations package.json node_modules`
+  and **no `index.mjs`** — to `tish-migrate` by hand, because CI's single artifact
+  would have shipped the handler in the same push that made the migration
+  available. That asymmetry is a permanent property of this setup: the runner can
+  always be moved ahead of the handler, and for a schema-dependent change it
+  should be.
 - **⚠ The reset wiped `user_relationships`, so caregiver features cannot be
   tested until a pairing is re-created.** D-11 preserves `users`, `genders` and
   `conditions`; the caregiver graph is not in that set and was rebuilt empty.
