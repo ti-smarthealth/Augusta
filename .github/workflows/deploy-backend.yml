@@ -78,6 +78,18 @@ jobs:
       # yet, and every request touching it fails until the migration is run.
       # Apply the migration *before* merging schema-dependent code.
       #
+      # **Adding a function name here is two changes, not one.** The OIDC role
+      # `github-lambda-deploy` carries an explicit per-function allowlist for
+      # `lambda:UpdateFunctionCode`, so a name added to this loop and not to that
+      # policy fails with `AccessDeniedException` — *after* the earlier functions
+      # in the loop have already deployed, because the step stops at the first
+      # error. That half-applied state is the trap: the deploy reports failure
+      # while some functions are on new code and some are not.
+      #
+      # This is what actually kept the escalation pair on hand-deploys. The zip
+      # omitted them, but the role could not have updated them either; fixing
+      # only the packaging produced exactly the failure above (2026-09-09).
+      #
       # **The two escalation functions are live and scheduled**, unlike the
       # other three. `tish-escalate-dispatch` is invoked by EventBridge
       # `tish-escalation-schedule` at `rate(1 minute)` and sends real

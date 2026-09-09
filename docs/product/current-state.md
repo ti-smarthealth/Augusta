@@ -175,8 +175,12 @@ Each of these was considered and declined; they are decisions, not gaps.
 - **CI deploys every Lambda** on push to `main` — the app backend, the migration
   runner, **both escalation functions**, the admin API, the dashboard SPA, the
   patient web app, the Cognito trigger and the telemetry Lambdas. The escalation
-  pair was hand-uploaded until 2026-09-08 and now ships from the same zip as the
-  backend, which is what it always ran from.
+  pair was hand-uploaded until 2026-09-09 and now ships from the same zip as the
+  backend, which is what it always ran from. **Adding a function to the deploy
+  loop is two changes**: the workflow, and the `github-lambda-deploy` OIDC role's
+  explicit per-function allowlist for `lambda:UpdateFunctionCode`. Missing the
+  second fails the deploy *after* earlier functions in the loop have shipped,
+  leaving some on new code and some on old.
 - **Alarms publish to `tish-alarms`, which reaches a phone and an inbox.** SMS to
   `+61414737424` (2026-09-08) and email to `admin@ti-smarthealth.com`
   (2026-09-09). Before that the topic had no subscribers at all and the
