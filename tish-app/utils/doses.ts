@@ -94,7 +94,29 @@ export function confirmedDoseKeys(rows: DoseRow[]): Set<string> {
  * three-day reminder can show a dose on a day the device never alarmed. Trust
  * this list for daily reminders until a reminder anchor date exists.
  */
-export function missedDoses(rows: DoseRow[], now: Date = new Date(), limit = 20): DoseRow[] {
+export function missedDoses(rows: DoseRow[], now: Date = new Date(), limit = MISSED_DOSE_PAGE): DoseRow[] {
+  return allMissedDoses(rows, now).slice(0, limit);
+}
+
+/**
+ * How many missed doses the screen shows before it offers "show more".
+ *
+ * The cap exists for the reason `missedDoses` describes — a readable list
+ * rather than a wall — and **not** because the rest is unimportant. That
+ * distinction is what makes hiding the remainder silently the wrong behaviour:
+ * a patient back from two weeks away has more than twenty and every one of them
+ * is part of the record D-4 asks for.
+ */
+export const MISSED_DOSE_PAGE = 20;
+
+/**
+ * Every missed dose, uncapped, newest first.
+ *
+ * Exists so the screen can say **how many** it is not showing. Callers that
+ * render a list want `missedDoses`; this is for the count behind the "show
+ * more", and for a caller that has already decided to show everything.
+ */
+export function allMissedDoses(rows: DoseRow[], now: Date = new Date()): DoseRow[] {
   const cutoff = now.getTime();
 
   return (Array.isArray(rows) ? rows : [])
@@ -105,6 +127,5 @@ export function missedDoses(rows: DoseRow[], now: Date = new Date(), limit = 20)
       const snoozedUntil = row.snoozed_until ? Date.parse(String(row.snoozed_until)) : NaN;
       return !(Number.isFinite(snoozedUntil) && snoozedUntil > cutoff);
     })
-    .sort((a, b) => Date.parse(String(b.scheduled_for)) - Date.parse(String(a.scheduled_for)))
-    .slice(0, limit);
+    .sort((a, b) => Date.parse(String(b.scheduled_for)) - Date.parse(String(a.scheduled_for)));
 }

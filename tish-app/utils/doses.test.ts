@@ -15,7 +15,7 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
 
-import { confirmedDoseKeys, doseKey, missedDoses } from './doses.ts';
+import { allMissedDoses, confirmedDoseKeys, doseKey, missedDoses, MISSED_DOSE_PAGE } from './doses.ts';
 
 const HOUR = 60 * 60 * 1000;
 
@@ -168,6 +168,45 @@ test('the list is capped, so a long absence is readable rather than a wall', () 
   const shown = missedDoses(rows, NOW);
   assert.equal(shown.length, 20);
   assert.equal(shown[0].id, 0, 'the cap keeps the most recent, not the oldest');
+});
+
+test('allMissedDoses is uncapped, so the screen can say how many it is hiding', () => {
+  const rows = Array.from({ length: 40 }, (_, i) =>
+    dose({ id: i, scheduled_for: new Date(NOW.getTime() - (i + 1) * HOUR).toISOString() }));
+  const all = allMissedDoses(rows, NOW);
+  assert.equal(all.length, 40, 'the cap is a display decision, not a filter');
+  assert.equal(all.length - missedDoses(rows, NOW).length, 20, 'and the difference is what "show more" offers');
+});
+
+test('allMissedDoses applies the same filters as the capped list', () => {
+  // The two must not disagree about what "missed" means, or the count behind
+  // "show more" would promise rows the expanded list does not contain.
+  const rows = [
+    dose({ id: 1, scheduled_for: new Date(NOW.getTime() - HOUR).toISOString() }),
+    dose({ id: 2, scheduled_for: new Date(NOW.getTime() + HOUR).toISOString() }),
+    dose({ id: 3, scheduled_for: new Date(NOW.getTime() - HOUR).toISOString(), confirmed_at: NOW.toISOString() }),
+    dose({
+      id: 4,
+      scheduled_for: new Date(NOW.getTime() - HOUR).toISOString(),
+      snoozed_until: new Date(NOW.getTime() + HOUR).toISOString(),
+    }),
+    dose({ scheduled_for: 'nonsense' }),
+  ];
+  assert.deepEqual(allMissedDoses(rows, NOW).map((d) => d.id), [1]);
+  assert.deepEqual(
+    allMissedDoses(rows, NOW),
+    missedDoses(rows, NOW, Number.POSITIVE_INFINITY),
+    'an uncapped missedDoses is the same list',
+  );
+});
+
+test('MISSED_DOSE_PAGE is what missedDoses caps at by default', () => {
+  // Guards the screen's slice against drifting away from the util's default —
+  // they are two expressions of one number and the "show more" arithmetic
+  // silently goes wrong if they disagree.
+  const rows = Array.from({ length: MISSED_DOSE_PAGE + 5 }, (_, i) =>
+    dose({ id: i, scheduled_for: new Date(NOW.getTime() - (i + 1) * HOUR).toISOString() }));
+  assert.equal(missedDoses(rows, NOW).length, MISSED_DOSE_PAGE);
 });
 
 test('malformed rows are dropped rather than rendered blank', () => {

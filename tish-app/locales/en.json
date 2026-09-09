@@ -89,7 +89,9 @@
     "alarmDefaultLabel": "Alarm {{number}}",
     "missedTitle": "Doses not confirmed",
     "missedSubtitle": "These were scheduled in the last week and were not marked as taken.",
-    "missedFootnote": "This is a record, not a reminder to take them now. If you are unsure whether to take a dose late, ask your doctor or pharmacist."
+    "missedFootnote": "This is a record, not a reminder to take them now. If you are unsure whether to take a dose late, ask your doctor or pharmacist.",
+    "missedShowMore_one": "Show {{count}} more",
+    "missedShowMore_other": "Show {{count}} more"
   },
   "mealTypes": {
     "breakfast": "Breakfast",

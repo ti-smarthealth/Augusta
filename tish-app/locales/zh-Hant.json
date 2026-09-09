@@ -89,7 +89,9 @@
     "alarmDefaultLabel": "鬧鐘 {{number}}",
     "missedTitle": "未確認的用藥",
     "missedSubtitle": "以下是過去一週已排程、但未標記為已服用的劑次。",
-    "missedFootnote": "這只是紀錄，並非要您現在補服。若不確定是否可以延後服用，請詢問醫師或藥師。"
+    "missedFootnote": "這只是紀錄，並非要您現在補服。若不確定是否可以延後服用，請詢問醫師或藥師。",
+    "missedShowMore_one": "再顯示 {{count}} 筆",
+    "missedShowMore_other": "再顯示 {{count}} 筆"
   },
   "mealTypes": {
     "breakfast": "早餐",

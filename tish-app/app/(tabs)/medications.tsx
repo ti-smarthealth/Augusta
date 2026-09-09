@@ -4,7 +4,7 @@ import { useNotificationSync } from '@/hooks/use-notification-sync';
 import { apiRequest } from '@/utils/api';
 import { announcementLocaleFrom } from '@/utils/announcements';
 import { localisedName } from '@/utils/vocabulary';
-import { missedDoses } from '@/utils/doses';
+import { allMissedDoses, MISSED_DOSE_PAGE } from '@/utils/doses';
 import type { DoseRow } from '@/utils/doses';
 import { cancelMedicationNotifications, scheduleMedicationNotifications } from '@/utils/notification-helper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -29,9 +29,14 @@ export default function MedicationsScreen() {
   const { syncFor } = useNotificationSync();
   const [reminders, setReminders] = useState<any[]>([]);
   const [missed, setMissed] = useState<DoseRow[]>([]);
+  // Collapses again on every reload, so a refresh is not silently showing more
+  // than the screen offered to show.
+  const [showAllMissed, setShowAllMissed] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [expandedId, setExpandedId] = useState<number | null>(null);
+
+  const visibleMissed = showAllMissed ? missed : missed.slice(0, MISSED_DOSE_PAGE);
 
   useFocusEffect(useCallback(() => { loadData(); }, [activeDependent?.id]));
 
@@ -101,7 +106,8 @@ export default function MedicationsScreen() {
         return;
       }
       const rows = await res.json();
-      setMissed(missedDoses(Array.isArray(rows) ? rows : [], new Date()));
+      setMissed(allMissedDoses(Array.isArray(rows) ? rows : [], new Date()));
+      setShowAllMissed(false);
     } catch (e) {
       console.warn('[medications] could not load missed doses', e);
     }
@@ -202,7 +208,7 @@ export default function MedicationsScreen() {
             </View>
             <Text style={styles.missedSubtitle}>{t('medications.missedSubtitle')}</Text>
 
-            {missed.map((dose, i) => {
+            {visibleMissed.map((dose, i) => {
               const at = new Date(String(dose.scheduled_for));
               return (
                 <View key={dose.id ?? `${dose.reminder_id}-${dose.scheduled_for}`} style={styles.missedRow}>
@@ -221,6 +227,28 @@ export default function MedicationsScreen() {
                 </View>
               );
             })}
+
+            {/*
+              The list was capped at twenty with nothing saying so, which made a
+              long absence look like a short one — the opposite of the record
+              D-4 asks for. Expands in place rather than navigating: the count
+              is the information, and a second screen for a list this size would
+              be more ceremony than it is worth.
+            */}
+            {missed.length > visibleMissed.length && (
+              <Button
+                mode="text"
+                compact
+                onPress={() => setShowAllMissed(true)}
+                textColor={COLORS.slate}
+                style={styles.missedShowMore}
+                accessibilityLabel={t('medications.missedShowMore', {
+                  count: missed.length - visibleMissed.length,
+                })}
+              >
+                {t('medications.missedShowMore', { count: missed.length - visibleMissed.length })}
+              </Button>
+            )}
 
             <Text style={styles.missedFootnote}>{t('medications.missedFootnote')}</Text>
           </Surface>
@@ -364,6 +392,9 @@ const styles = StyleSheet.create({
   missedWhen: { fontSize: 13, fontWeight: '700', color: COLORS.slate, minWidth: 96 },
   missedWhat: { flex: 1, fontSize: 15, fontWeight: '600', color: COLORS.ink },
   missedFootnote: { fontSize: 12, color: COLORS.slate, marginTop: 14, lineHeight: 17 },
+  // Left-aligned with the rows above it rather than centred, so it reads as the
+  // end of the list rather than as a call to action. D-4's tone rule again.
+  missedShowMore: { alignSelf: 'flex-start', marginTop: 6, marginLeft: -8 },
   listContainer: { gap: 12 },
   medCard: { backgroundColor: COLORS.surface, borderRadius: RADIUS.lg, padding: 12, ...SHADOWS.soft },
   cardHeader: { flexDirection: 'row', alignItems: 'center' },
