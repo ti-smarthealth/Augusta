@@ -1430,7 +1430,12 @@ function insertedByColumn(sql, params) {
 /** For `UPDATE t SET a = COALESCE($1, a), b = COALESCE($2, b) WHERE ...`. */
 function updatedByColumn(sql, params) {
   const out = {};
-  for (const m of sql.matchAll(/([a-z_]+)\s*=\s*COALESCE\(\$(\d+)/g)) {
+  // Two SET shapes now. Every optional field is `col = COALESCE($n, col)`;
+  // migration 016's `anchor_date` is `col = CASE WHEN $n ... END`, because
+  // re-anchoring is conditional on *which* fields moved rather than on whether
+  // a value was supplied. Both bind exactly one parameter, which is what the
+  // scoping assertion below counts.
+  for (const m of sql.matchAll(/([a-z_]+)\s*=\s*(?:COALESCE\(|CASE WHEN\s+)\$(\d+)/g)) {
     out[m[1]] = params[Number(m[2]) - 1];
   }
   return out;
@@ -1526,6 +1531,62 @@ test('PUT /medication-reminders sends a full COALESCE update with id+user scopin
   assert.equal(updated[setCount], 5);       // id
   assert.equal(updated[setCount + 1], 1);   // user scoping
   assert.match(sql, new RegExp(`WHERE id = \\$${setCount + 1} AND user_id = \\$${setCount + 2}`));
+});
+
+// ---------------------------------------------------------------------------
+// Migration 016 — the anchor date.
+//
+// The defect these guard: the server materialised from `today` while the device
+// walks from when the reminder was created or last edited. Identical for
+// `frequency_days = 1`, out of phase for anything longer — so the server
+// invented a dose on a day the device never alarmed and 5.7 reported it missed.
+// ---------------------------------------------------------------------------
+
+test('POST /medication-reminders stamps the anchor date in the patient own zone', async () => {
+  let anchorSql = null;
+  let anchorParams = null;
+  _setPoolForTests(selfPool([
+    { match: /INSERT INTO medication_reminders/, result: () => ({ rows: [{ id: 5 }] }) },
+    { match: /UPDATE medication_reminders r/, result: (t, params) => {
+        anchorSql = t; anchorParams = params; return { rows: [] };
+      } },
+  ]));
+  await handler(restEvent({
+    method: 'POST', path: '/medication-reminders', sub: 'sub-1',
+    body: { med_id: 2, alarms: ['08:00'], frequency_days: 3 },
+  }));
+
+  assert.ok(anchorSql, 'a new reminder gets an anchor, or every later dose is in the wrong phase');
+  assert.deepEqual(anchorParams, [5]);
+  // The patient's zone, not the server's. UTC and Taipei are different dates
+  // for eight hours a day, and a day-early anchor is the whole defect.
+  assert.match(anchorSql, /now\(\) AT TIME ZONE u\.timezone/);
+  // Idempotent: re-running must never re-phase a reminder that already has one.
+  assert.match(anchorSql, /anchor_date IS NULL/);
+});
+
+test('PUT /medication-reminders re-anchors when the timing moves, and only then', async () => {
+  const anchorParamFor = async (body) => {
+    let updated;
+    let sql;
+    _setPoolForTests(selfPool([
+      { match: /UPDATE medication_reminders SET/, result: (t, params) => {
+          sql = t; updated = params; return { rows: [{ id: 5 }] };
+        } },
+    ]));
+    await handler(restEvent({ method: 'PUT', path: '/medication-reminders', sub: 'sub-1', body }));
+    return updatedByColumn(sql, updated).anchor_date;
+  };
+
+  // New alarm times, or a new interval, both move the phase — so both re-anchor.
+  assert.equal(await anchorParamFor({ id: 5, alarms: ['09:00'] }), true);
+  assert.equal(await anchorParamFor({ id: 5, frequency_days: 3 }), true);
+
+  // A status toggle and a dosage edit are PUTs too. Re-phasing a 3-day reminder
+  // because somebody renamed its dosage would be a schedule change nobody asked
+  // for, and it would silently disagree with the device.
+  assert.equal(await anchorParamFor({ id: 5, status: 'inactive' }), false);
+  assert.equal(await anchorParamFor({ id: 5, selected_dosage: '400mg' }), false);
 });
 
 test('PUT /medication-reminders updates alarm_sources when meal times are re-resolved', async () => {

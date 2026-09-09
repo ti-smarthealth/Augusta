@@ -130,7 +130,12 @@ const TABLE_DEFINITIONS = [
         at_dinner BOOLEAN DEFAULT false, 
         dinner_timing TEXT DEFAULT 'after',
         at_bedtime BOOLEAN DEFAULT false, 
-        frequency_days INTEGER DEFAULT 1, 
+        frequency_days INTEGER DEFAULT 1,
+        -- Migration 016. Phase origin for materialising non-daily doses: the
+        -- local date the reminder was created or last edited, which is what the
+        -- device walks its chain from. Nullable on purpose — NULL degrades to
+        -- today, the pre-016 behaviour — and irrelevant when frequency_days = 1.
+        anchor_date DATE,
         status TEXT DEFAULT 'active',
         reminder_sound TEXT DEFAULT 'default',
         alarms TEXT[],
@@ -732,10 +737,13 @@ export function resolveRoutePath(event) {
  * - **Malformed alarm times are skipped, not fatal.** A single bad string would
  *   otherwise fail the cast and take the whole user's materialisation with it —
  *   the same reasoning as `parseTimeToMinutes` returning null on the client.
- * - **The series is anchored on today**, which is exact for `frequency_days = 1`
- *   (the default, and almost all real rows) and only approximates the device's
- *   phase for longer intervals. See §0.6; the fix is an anchor date on the
- *   reminder, which is a schema change this could not make.
+ * - **The series is anchored on `r.anchor_date`** (migration 016), which is the
+ *   local date the reminder was created or last edited — the same origin the
+ *   device walks its chain from. Before 016 this walked from today, which is
+ *   exact for `frequency_days = 1` and out of phase for anything longer, so the
+ *   server could materialise a dose on a day the device never alarmed and 5.7
+ *   would report it missed. **A NULL anchor falls back to today**, which is the
+ *   pre-016 behaviour, so an un-backfilled row is no worse than it was.
  */
 async function materialiseDoses({ reminderId, userId }) {
     const scope = reminderId != null ? 'r.id = $1' : 'r.user_id = $1';
@@ -751,9 +759,20 @@ async function materialiseDoses({ reminderId, userId }) {
         JOIN users u ON u.id = r.user_id
         CROSS JOIN LATERAL (SELECT COALESCE(u.timezone, $2) AS tz) AS z
         CROSS JOIN LATERAL unnest(r.alarms) AS a(alarm)
-        CROSS JOIN LATERAL generate_series(0, $3::int, GREATEST(COALESCE(r.frequency_days, 1), 1)) AS off(n)
+        CROSS JOIN LATERAL (SELECT (now() AT TIME ZONE z.tz)::date AS today) AS d
+        CROSS JOIN LATERAL (SELECT GREATEST(COALESCE(r.frequency_days, 1), 1) AS freq) AS f
+        -- Days from today to the first occurrence that is in phase with the
+        -- anchor. A NULL anchor gives 0, i.e. start today — the pre-016
+        -- behaviour. The double modulo is not superstition: Postgres's % keeps
+        -- the sign of the dividend, so an anchor in the future (which a clock
+        -- skew or a hand-edited row can produce) would otherwise generate a
+        -- negative offset and materialise doses in the past.
         CROSS JOIN LATERAL (
-            SELECT (((now() AT TIME ZONE z.tz)::date + off.n) + a.alarm::time) AT TIME ZONE z.tz AS at
+            SELECT ((f.freq - (((d.today - COALESCE(r.anchor_date, d.today)) % f.freq) + f.freq) % f.freq) % f.freq) AS n0
+        ) AS p
+        CROSS JOIN LATERAL generate_series(p.n0, $3::int, f.freq) AS off(n)
+        CROSS JOIN LATERAL (
+            SELECT ((d.today + off.n) + a.alarm::time) AT TIME ZONE z.tz AS at
         ) AS slot
         WHERE ${scope}
           AND r.status = 'active'
@@ -795,6 +814,30 @@ async function materialiseDoses({ reminderId, userId }) {
  * `/reset-db`) created the table, which is the ordering trap §0.6 already records
  * once.
  */
+/**
+ * Migration 016 — stamp a new reminder's phase origin, in the patient's zone.
+ *
+ * `IS NULL` in the WHERE so this is idempotent and cannot re-phase a reminder
+ * that already has an anchor. Re-anchoring on edit is the PUT's job, and it is
+ * deliberately narrower: only a change to `alarms` or `frequency_days` moves the
+ * phase, because a status toggle and a dosage rename are both PUTs too.
+ *
+ * Failure is swallowed for the same reason `safeMaterialiseDoses` swallows its
+ * own, and the degradation is gentler: a NULL anchor is what every row had
+ * before 016, so the reminder simply keeps materialising from today.
+ */
+async function safeAnchorReminder(reminderId) {
+    try {
+        await pool.query(`
+            UPDATE medication_reminders r
+            SET anchor_date = (now() AT TIME ZONE u.timezone)::date
+            FROM users u
+            WHERE u.id = r.user_id AND r.id = $1 AND r.anchor_date IS NULL`, [reminderId]);
+    } catch (e) {
+        console.error('[anchor] could not stamp anchor_date for reminder', reminderId, e);
+    }
+}
+
 async function safeMaterialiseDoses(scope) {
     try {
         return await materialiseDoses(scope);
@@ -1890,13 +1933,28 @@ export const handler = async (event) => {
                         escalation_delay_minutes = COALESCE($16, escalation_delay_minutes),
                         escalation_order = COALESCE($17, escalation_order),
                         alarm_repeat_count = COALESCE($18, alarm_repeat_count),
-                        snooze_minutes = COALESCE($19, snooze_minutes)
-                        WHERE id = $20 AND user_id = $21 RETURNING *`;
+                        snooze_minutes = COALESCE($19, snooze_minutes),
+                        -- Migration 016. Re-anchor only when the *timing* moved
+                        -- — new alarm times or a new interval — because that is
+                        -- when the device rebuilds its chain from now. A status
+                        -- toggle or a dosage edit is a PUT too, and re-phasing a
+                        -- 3-day reminder because somebody renamed its dosage
+                        -- would be a silent schedule change nobody asked for.
+                        --
+                        -- One parameter, and the id/user pair stays last: the
+                        -- suite asserts that invariant directly, because the
+                        -- WHERE scoping drifting off the end of the SET list is
+                        -- how a user edits somebody else's row.
+                        anchor_date = CASE WHEN $20::boolean
+                            THEN (now() AT TIME ZONE
+                                (SELECT u.timezone FROM users u WHERE u.id = medication_reminders.user_id))::date
+                            ELSE anchor_date END
+                        WHERE id = $21 AND user_id = $22 RETURNING *`;
                     // An id that matches nothing used to return an empty body
                     // with 200. The form's res.json() then threw, the throw was
                     // swallowed, and the app went on to schedule notifications
                     // from local state for a reminder the server never updated.
-                    const updated = (await pool.query(q, [payload.status, payload.selected_dosage, payload.at_breakfast, payload.breakfast_timing, payload.at_lunch, payload.lunch_timing, payload.at_dinner, payload.dinner_timing, payload.at_bedtime, payload.frequency_days, payload.alarms, payload.alarm_labels, payload.reminder_sound, payload.alarm_sources, payload.escalation_enabled, payload.escalation_delay_minutes, payload.escalation_order, payload.alarm_repeat_count, payload.snooze_minutes, payload.id, targetId])).rows[0];
+                    const updated = (await pool.query(q, [payload.status, payload.selected_dosage, payload.at_breakfast, payload.breakfast_timing, payload.at_lunch, payload.lunch_timing, payload.at_dinner, payload.dinner_timing, payload.at_bedtime, payload.frequency_days, payload.alarms, payload.alarm_labels, payload.reminder_sound, payload.alarm_sources, payload.escalation_enabled, payload.escalation_delay_minutes, payload.escalation_order, payload.alarm_repeat_count, payload.snooze_minutes, payload.alarms != null || payload.frequency_days != null, payload.id, targetId])).rows[0];
                     if (!updated) { fail('REMINDER_NOT_FOUND'); }
                     else {
                         // 5.1 — the schedule may have moved, so future
@@ -1937,6 +1995,24 @@ export const handler = async (event) => {
                     // opposite and is meant to be.
                     const q = `INSERT INTO medication_reminders (user_id, med_id, selected_dosage, at_breakfast, breakfast_timing, at_lunch, lunch_timing, at_dinner, dinner_timing, at_bedtime, frequency_days, alarms, alarm_labels, reminder_sound, alarm_sources, escalation_enabled, escalation_delay_minutes, escalation_order, alarm_repeat_count, snooze_minutes) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,COALESCE($16,false),COALESCE($17,30),COALESCE($18,'caregiver_first'),COALESCE($19,3),COALESCE($20,10)) RETURNING *`;
                     body = (await pool.query(q, [targetId, payload.med_id, payload.selected_dosage, payload.at_breakfast, payload.breakfast_timing, payload.at_lunch, payload.lunch_timing, payload.at_dinner, payload.dinner_timing, payload.at_bedtime, payload.frequency_days, payload.alarms, payload.alarm_labels, payload.reminder_sound, payload.alarm_sources, payload.escalation_enabled, payload.escalation_delay_minutes, payload.escalation_order, payload.alarm_repeat_count, payload.snooze_minutes])).rows[0];
+
+                    // Migration 016 — stamp the phase origin before any dose is
+                    // materialised from it.
+                    //
+                    // **Its own statement rather than a column on the INSERT**,
+                    // because the value is a subquery against `users` and not a
+                    // parameter, and the INSERT above holds a
+                    // one-column-one-placeholder invariant the suite asserts
+                    // directly. A computed column would have quietly retired a
+                    // check that catches a whole class of runtime failure, to
+                    // save one round trip on the rarest write in the app.
+                    //
+                    // The date is resolved in the patient's own zone, not the
+                    // server's: for a Taipei patient those differ for eight
+                    // hours of every day, and an anchor a day early puts every
+                    // later dose of a non-daily reminder out of phase with the
+                    // device — which is the exact defect 016 exists to close.
+                    if (body?.id) await safeAnchorReminder(body.id);
 
                     // 5.1 — a brand-new reminder has no doses yet, and the
                     // escalation job and the missed list are both blind to a
