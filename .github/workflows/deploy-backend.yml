@@ -37,13 +37,29 @@ jobs:
         run: npm test
 
       - name: Package function
-        # `migrate.mjs` and `migrations/` are in the artifact because
-        # `tish-migrate` runs from this same zip and differs only by handler.
-        # They were previously omitted, which meant a new migration file could
-        # be committed, pushed and merged while `tish-migrate status` still
-        # reported nothing pending — the migration did not exist as far as the
-        # runner was concerned until somebody hand-built a zip containing it.
-        run: zip -r function.zip index.mjs migrate.mjs migrations package.json node_modules
+        # **One zip, five functions.** Everything here runs from this same
+        # artifact and differs only by handler.
+        #
+        # `migrate.mjs` and `migrations/` are in it because `tish-migrate` runs
+        # from this zip. They were previously omitted, which meant a new
+        # migration file could be committed, pushed and merged while
+        # `tish-migrate status` still reported nothing pending — the migration
+        # did not exist as far as the runner was concerned until somebody
+        # hand-built a zip containing it.
+        #
+        # `escalate.mjs` and `escalation-policy.mjs` are in it for the same
+        # reason and were omitted for the same length of time: the two
+        # escalation Lambdas were built and uploaded by hand for every session
+        # after they landed, which is exactly the drift the migrations fix was
+        # meant to end. `escalate.mjs` imports from `index.mjs`, so the three
+        # files have to travel together regardless.
+        #
+        # `@aws-sdk/client-lambda` is deliberately NOT here: it is a
+        # devDependency, `npm ci --omit=dev` drops it, and the Node.js managed
+        # runtime provides the v3 SDK at execution. Bundling it would add
+        # megabytes to a ~180KB zip for a module already present. See the note
+        # above `defaultInvokeDb` in escalate.mjs.
+        run: zip -r function.zip index.mjs migrate.mjs escalate.mjs escalation-policy.mjs migrations package.json node_modules
 
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
@@ -61,9 +77,18 @@ jobs:
       # adds, this workflow ships the handler while the column does not exist
       # yet, and every request touching it fails until the migration is run.
       # Apply the migration *before* merging schema-dependent code.
+      #
+      # **The two escalation functions are live and scheduled**, unlike the
+      # other three. `tish-escalate-dispatch` is invoked by EventBridge
+      # `tish-escalation-schedule` at `rate(1 minute)` and sends real
+      # notifications to real people; `tish-escalate-db` is what it invokes for
+      # database access. A bad deploy here is visible within a minute rather
+      # than on the next request. Kill switch, if one ever needs stopping:
+      # `aws events disable-rule --name tish-escalation-schedule --region ap-east-2`
       - name: Update Lambda code
         run: |
-          for fn in "${{ vars.BACKEND_FUNCTION_NAME }}" tish-migrate; do
+          for fn in "${{ vars.BACKEND_FUNCTION_NAME }}" tish-migrate \
+                    tish-escalate-dispatch tish-escalate-db; do
             echo "Deploying $fn..."
             aws lambda update-function-code \
               --function-name "$fn" \

@@ -5,9 +5,26 @@
 # page lists alarms by that prefix, so an alarm created outside this script
 # still shows up as long as it follows the convention.
 #
-# All of them publish to `tish-alarms`. Nothing is subscribed to that topic
-# yet, which means today the dashboard is the only place a firing alarm is
-# visible; adding an email subscription is one command and one click.
+# All of them publish to `tish-alarms`, which reaches a phone by SMS since
+# 2026-09-08. Before that the topic had no subscribers at all and the dashboard's
+# Health page was the only place a firing alarm was visible.
+#
+# **Two things about that channel are worth knowing before you add an alarm
+# here**, because both make a new alarm cost more than it looks:
+#
+#   - Every alarm below sets `--ok-actions` as well as `--alarm-actions`, so a
+#     single incident sends **two** messages — one firing, one clearing.
+#   - The account's SNS spend limit is still `$1`/month (`MIGRATION.md` B1), which
+#     at Australian SMS rates is roughly twenty messages. So the SMS budget is
+#     about **ten incidents a month**, after which SNS stops delivering without
+#     raising anything — a silent cap on the channel whose job is to break
+#     silence.
+#
+# **`admin@ti-smarthealth.com` is subscribed by email as well** (2026-09-09), and
+# that half has no cap, no sandbox and no per-message cost. Treat SMS as the
+# nudge and email as the record: when the spend limit is reached the texts stop
+# and the mail keeps arriving, so an alarm is never lost outright — but the
+# *notification you actually wake up to* can be, which is why B1 still matters.
 set -euo pipefail
 
 R=ap-east-2
