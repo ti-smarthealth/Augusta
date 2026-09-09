@@ -163,19 +163,21 @@ each of them again:
 
 | Change | Source |
 | --- | --- |
-| Alarm engine verified on hardware; TestFlight build succeeding | `PLAN.md` §0.3 session-10 directive, §0.7 item 2b; `REBUILD.md`; `HANDOFF.md` |
+| ~~Alarm engine verified on hardware; TestFlight build succeeding~~ — **landed 2026-09-08, iOS only.** What remains of this line is the Android half: the alarm-stream channel (4.7e) and exact alarms (5.2), which need an Android handset | `PLAN.md` §0.7 item 2b (resolved); `current-state.md` "Device verification" |
+| ~~The receipts poll observed reading a real receipt~~ — **confirmed 2026-09-08** | `PLAN.md` 5.8 |
+| Android alarm-stream channel and exact alarms verified on hardware | `PLAN.md` 4.7e, 5.2 — needs an Android handset, not a build |
 | SMS escalation rung sends | `PLAN.md` 5.5 (blocked on Track B) |
 | SMS verification at sign-up | `MIGRATION.md` Track B; `constants/config.ts` |
 | Custom-domain email, SPF + DMARC | `MIGRATION.md` Track A |
 | Critical Alerts entitlement (optional) | `PLAN.md` P0.2, 5.3 |
 | Android exact-alarm Play declaration; Android E2E unparked | `PLAN.md` §0.7 item 5; `HANDOFF.md` |
 | An E2E flow proving an alarm fires | `HANDOFF.md` "Next" |
-| On-call inbox subscribed to the alert topic | `docs/architecture` target diagram (`oncall`); `alarms.sh`; the dashboard Health page |
+| ~~On-call inbox subscribed to the alert topic~~ — **done: SMS 2026-09-08, email 2026-09-09.** What remains is raising the `$1` SNS spend cap so the SMS half cannot go quiet mid-incident | `docs/architecture` target diagram (`oncall`); `alarms.sh`; `MIGRATION.md` B1 |
 | Security posture | `PLAN.md` P0.1; `MIGRATION.md` D2, D5; `dashboard/AWS-SETUP.md` "Known gaps" — **no plan file exists** |
-| Anchor date for non-daily materialisation | `PLAN.md` §0.6 |
-| Device snooze follows the server's re-anchoring | `PLAN.md` §0.3 "smaller things" |
-| Missed-dose list stops truncating at twenty | `PLAN.md` §0.3 "smaller things" |
-| Escalation Lambdas deployed by CI | `tish-app/backend/DEPLOY.md` |
+| ~~Anchor date for non-daily materialisation~~ — **built 2026-09-08 (migration `016`), ⚠ not yet applied** | `PLAN.md` §0.6 |
+| Device snooze follows the server's re-anchoring — **a standing decision, not a gap.** §0.6 settled in session 5 that the server stays the single authority; the trigger to revisit is a real caregiver reporting the duplicate | `PLAN.md` §0.6, §0.3 "smaller things" |
+| ~~Missed-dose list stops truncating at twenty~~ — **done 2026-09-08** | `PLAN.md` §0.3 "smaller things" |
+| ~~Escalation Lambdas deployed by CI~~ — **done 2026-09-08** | `.github/workflows/deploy-backend.yml` |
 | Locale check triggers on any change that could add a key | `MIGRATION.md` D6 — recorded, and **deliberately left alone** for now, because widening the trigger also changes what gets published and when |
 | Component and hook tests | `PLAN.md` §0.8 |
 

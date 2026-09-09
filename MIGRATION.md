@@ -15,12 +15,12 @@ Account `180891490019`. Written 2026-07-24.
 | A1.2 sending authorization policy | **done** — `CognitoTaipei` on the Seoul identity |
 | A1.3 pool custom FROM on COGNITO_DEFAULT | **not possible** — API rejects it, see correction |
 | A1.4 SPF | **done** — added alongside Google verification |
-| A1.4 DMARC | not started — `p=none` recommended |
+| A1.4 DMARC | **done 2026-09-08** — `p=none`, `rua=mailto:dmarc@ti-smarthealth.com`, TTL 3600, `INSYNC` |
 | A2 SES DEVELOPER mode | blocked on A0 — **now the only route to a custom sender** |
 | B0 SNS production access | filed, **still sandboxed** |
 | B1 raise SNS spend limit | **not in effect** — still `$1` |
 | B2 Taiwan sender ID | unverifiable via CLI |
-| B3 verify tester numbers | **not in effect** — zero numbers registered |
+| B3 verify tester numbers | **partly done** — checked 2026-09-08: `+886905115797` and `+610414737424` verified, `+61414737424` pending. **Not "zero registered"**, as this row said for six weeks |
 | B4 flip `SMS_VERIFICATION_ENABLED` | blocked on B0–B3 |
 | C1 ap-east-2 network foundation | **done** — subnet group + scoped SGs |
 | C2 snapshot / copy / restore | **done** — private instance live in Taipei |
@@ -42,7 +42,7 @@ Account `180891490019`. Written 2026-07-24.
 | Lambda SG | `sg-04bc9817aedc7ba73` (`tish-lambda-sg`) |
 | RDS SG | `sg-06942ffa08d47eb78` (`tish-rds-sg`) — 5432 from Lambda SG only |
 | RDS instance | `season1` → `season1.c308e88466sa.ap-east-2.rds.amazonaws.com`, private, 7-day backups |
-| Lambda | `operation-strix`, nodejs24.x, **timeout 15s** (was 3s), 128 MB |
+| Lambda | `operation-strix`, nodejs24.x, **timeout 15s** (was 3s), **256 MB** (was 128, raised 2026-09-08) |
 | IAM | inline `CloudWatchLogsApEast2` added to `operation-strix-role-8wrlapsc` |
 
 Three more Lambdas joined the region on 2026-08-01, after this table was written
@@ -54,9 +54,11 @@ Three more Lambdas joined the region on 2026-08-01, after this table was written
 | Lambda | `tish-escalate-db`, nodejs24.x, 60s, 256 MB |
 | Lambda | `tish-escalate-dispatch`, nodejs24.x, 120s, 256 MB |
 
-Note `operation-strix` is still on **128 MB** — the C5 "Watch" note below
-recommended 256 MB and it was never applied. The three functions above were
-created at 256 MB.
+~~Note `operation-strix` is still on **128 MB**~~ — **raised to 256 MB on
+2026-09-08**, closing the C5 "Watch" note below. It had sat at half the memory of
+the three functions above, which were all created at 256, for the whole life of
+the region. Also buys proportionally more CPU, which is the part that matters for
+a VPC cold start.
 
 ---
 
@@ -162,9 +164,27 @@ access. Transactional auth codes; describe bounce/complaint handling. Free.
    v=spf1 include:_spf.google.com include:amazonses.com ~all
    ```
 
-   DMARC not yet added. `p=none` with an `rua` address is the safe starting
-   point — it reports without affecting delivery. SES already passes DMARC via
-   DKIM alignment, so this is monitoring rather than a fix.
+   **DONE 2026-09-08.** `_dmarc.ti-smarthealth.com` TXT, TTL 3600:
+
+   ```
+   v=DMARC1; p=none; rua=mailto:dmarc@ti-smarthealth.com
+   ```
+
+   `p=none` reports without affecting delivery, and both senders already pass
+   DMARC via DKIM alignment — SES through the Seoul identity, Google through
+   Workspace — so this is instrumentation, not a fix. Nothing about mail
+   behaviour changed when it went in, which is the point of starting here.
+
+   ⚠ **`dmarc@ti-smarthealth.com` must exist**, as a Workspace group or an alias
+   on a real mailbox. The record is valid and harmless either way, but every
+   receiving provider sends a daily aggregate XML report to that address, and if
+   it does not resolve they all bounce — leaving the record in place and the
+   reporting it exists for silently absent.
+
+   **Do not move to `p=quarantine` or `p=reject` on a hunch.** Read a few weeks
+   of aggregate reports first and confirm every legitimate sender aligns; the
+   failure mode of tightening early is that real mail disappears, which is worse
+   than the monitoring gap this closes.
 
 The prepared `update-user-pool` payload is still useful for A2 — it reconstructs
 every parameter from a live `describe-user-pool`, so the reset footgun is
@@ -391,6 +411,11 @@ Neither is a migration artifact; both predate this stack and were left alone:
 headroom is thinner than it looks for a Node runtime holding a `pg` pool. Worth
 raising to 256 MB if cold starts or OOMs appear; it also buys proportionally
 more CPU, which shortens the VPC cold start.
+
+**✅ Done 2026-09-08 — raised to 256 MB**, so the headroom is now ~3× the
+observed peak rather than 1.5×. Worth re-reading `Max Memory Used` after a week
+of real traffic: the 86 MB figure was measured at idle load, and the reason to
+have acted on it was the cold-start CPU rather than the memory ceiling.
 
 ---
 

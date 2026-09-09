@@ -10,39 +10,34 @@ Read PLAN.md, starting with §0 (Progress) — it is the ledger and the only par
 that tracks what is actually done. Read the guardrails in §1 before deciding
 anything is too risky to try.
 
-**Two things are waiting, both cost or credential decisions the owner has to
-make: a failed TestFlight build needing an Apple portal action, and a CI setup
-that stopped being free when the repository went private.**
+> **⚠ This file was written at the end of session 11 and is partly stale.**
+> Updated 2026-09-08 for the two things that have since changed; everything else
+> below is as session 11 left it and has not been re-verified.
 
-## ⚠ TestFlight build 10 failed — provisioning profile is stale
+**One thing is waiting, and it is a cost decision the owner has to make: a CI
+setup that stopped being free when the repository went private.** The TestFlight
+and device-verification blockers that used to head this file are both resolved.
 
-`eas build --platform ios --profile production --auto-submit` failed in fastlane:
+## ✅ TestFlight and device verification — both resolved
 
-```
-Provisioning profile "*[expo] com.ti-smarthealth.app AppStore 2026-07-15..."
-  doesn't include the Time Sensitive Notifications capability
-  doesn't include the com.apple.developer.usernotifications.time-sensitive entitlement
-```
+Build 10's failure (a provisioning profile predating the Time Sensitive
+Notifications capability) was fixed on 2026-08-02 and **build 11 shipped**,
+carrying every native capability and the alarm-engine JS.
 
-**Not a regression.** `app.json` gained that entitlement in `e7c3cf1` on
-2026-07-31 at 14:39; the last successful production build (number 9) started the
-same day at 02:34, twelve hours earlier, and the provisioning profile dates from
-2026-07-15. Build 10 is simply the first production build to exercise it, and the
-profile predates it by two weeks.
+**Testers have since exercised the alarm engine on a physical iOS device
+(2026-09-08) and it works as designed:** bundled sounds play rather than the
+default chime, a burst arrives as consecutive alerts, alarms break through Focus
+modes, a snooze re-fires, responding clears the rest of the burst from the tray,
+a real Expo token registered, a server-side escalation push landed, an alarm rang
+on a later day with the app backgrounded, and a silent schedule-change push
+arrived in the background.
 
-The fix needs an Apple login, so it is the owner's:
+Check `eas build:list` for build state rather than this file — it will go stale
+again. `PLAN.md` §0.7 item 2b carries the per-item verification results.
 
-1. Try regenerating the profile first — EAS syncs capabilities from the
-   entitlements when it creates a *new* profile, so this may be sufficient on its
-   own:
-   ```
-   cd tish-app && npx eas-cli credentials
-   ```
-   iOS → production → Build Credentials → regenerate the provisioning profile.
-2. If it still fails, the capability is not enabled on the App ID. Apple Developer
-   portal → Identifiers → `com.ti-smarthealth.app` → enable **Time Sensitive
-   Notifications**, then repeat step 1.
-3. Then rebuild: `npx eas-cli build --platform ios --profile production --auto-submit`
+**What is still open on the device side is Android**, and it needs a handset
+rather than a build: the alarm-stream notification channel (4.7e) and exact
+alarms (5.2) have never run on Android hardware.
 
 Worth knowing why it matters beyond the build: the entitlement is what makes
 5.3's `interruptionLevel: 'timeSensitive'` work, which is how a medication alarm
@@ -130,8 +125,8 @@ unaffected and `npm run e2e:check` still validates them locally in a second.
   matching RDS row (`id: 4`). Its credentials are GitHub repo secrets
   `MAESTRO_USERNAME` / `MAESTRO_PASSWORD`. The flows sign in against the **live**
   backend — `API_BASE_URL` is a hardcoded production URL.
-- **TestFlight build 10 FAILED, and this is the one thing owed.** See the section
-  below — it needs an Apple Developer portal action that only the owner can take.
+- **TestFlight build 11 shipped 2026-08-02 and the alarm engine is verified on a
+  physical iOS device** (2026-09-08). Nothing is owed here; see the section above.
 
 ## Tooling on this machine
 
@@ -204,9 +199,49 @@ the code is identical in Paper 5.15.3.
 
 ## Next
 
-The obvious target is an E2E flow that proves **an alarm actually fires** — the
-highest-risk silent-failure behaviour in the app, and the original reason Maestro
-was chosen over Playwright. It is a real design problem, not another flow file:
-Maestro cannot move the device clock, so it needs either a reminder seeded a
-minute out and a genuine wait, or an `adb`-driven clock change, which is Android
-only and therefore parked. Worth its own session.
+**⚠ Apply migration `016` before the next backend deploy.** `index.mjs` in the
+working tree selects `anchor_date`, and `deploy-backend.yml` ships the handler on
+push to `main` whether or not the migration ran — the `alarm_labels` failure mode
+(`PLAN.md` §0.6). 016 is additive and unread by deployed code, so applying it
+early is safe; deploying early is not.
+
+Everything through 015 **is** applied — verified against the live runner on
+2026-09-08 (`pending: []`). Worth knowing how that was confirmed, because the
+obvious check is not sufficient: `tish-migrate status` reports on the migration
+files in *its own deployed zip*, so a stale runner cheerfully reports "nothing
+pending" about files it has never seen. Check its `LastModified` against
+`git log` too.
+
+```
+aws lambda invoke --function-name tish-migrate --region ap-east-2 \
+  --payload '{"command":"status"}' /dev/stdout
+```
+
+Then, in rough order, none of it blocked:
+
+1. **Raise the SNS spend limit** (`MIGRATION.md` B1). `tish-alarms` now reaches
+   both a phone (SMS) and an inbox (email), but the account cap is still
+   `$1`/month. Every alarm fires `--ok-actions` as well, so an incident is two
+   messages — roughly ten incidents before texts stop silently. Email is uncapped
+   and covers the record; what the cap costs is the interruption.
+
+**Done on 2026-09-08, live in AWS** — `operation-strix` raised from 128 MB to
+256 MB, which `MIGRATION.md` C5 recommended when the region was built and nobody
+ever applied; the app's own API had been running at half the memory of the three
+functions that joined it later.
+
+**Done on 2026-09-08, uncommitted in the working tree** — `escalate.mjs` and
+`escalation-policy.mjs` are now in `deploy-backend.yml` so the escalation pair
+deploys with everything else; the missed-dose list has a "Show N more" instead of
+silently truncating at twenty; migration `016` adds the reminder anchor date and
+`materialiseDoses` walks from it. 309 backend tests and 22 dose tests green, `tsc`
+clean, translations parity clean at 440 keys.
+
+The larger target remains an E2E flow that proves **an alarm actually fires** —
+the highest-risk silent-failure behaviour in the app, and the original reason
+Maestro was chosen over Playwright. Device verification has now shown the alarm
+works, but nothing regression-tests it. It is a real design problem, not another
+flow file: Maestro cannot move the device clock, so it needs either a reminder
+seeded a minute out and a genuine wait, or an `adb`-driven clock change, which is
+Android only and therefore parked. Note this is also gated on the CI funding
+decision above. Worth its own session.

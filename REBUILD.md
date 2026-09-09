@@ -1,3 +1,20 @@
+> # ✅ SUPERSEDED — 2026-09-08
+>
+> **This runbook is done. Do not work through it.** The rebuild it asks for
+> shipped as TestFlight build 11 on 2026-08-02, and testers exercised the alarm
+> engine on a physical iOS device on 2026-09-08. Every item in §1's table is
+> compiled into build 11.
+>
+> The verification results live in `PLAN.md` §0.7 item 2b and the "Device
+> verification" row of `docs/product/current-state.md`. What is still open is
+> the Android half — the alarm-stream channel (4.7e) and exact alarms (5.2) —
+> and that needs an Android handset rather than another build, so nothing in
+> this file will help with it.
+>
+> Kept because §1's explanation of *why* a config-plugin change cannot ride an
+> `eas update`, and §2's runtime-version trap, are both still true and still
+> worth reading before the next native build.
+
 # Native rebuild — what you need to do
 
 Written at the end of session 9 (2026-08-01). This is the one thing blocking

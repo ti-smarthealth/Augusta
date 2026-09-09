@@ -106,7 +106,7 @@ acts without a person triggering it.
 
 | Capability | Detail |
 | --- | --- |
-| Bilingual | English and Traditional Chinese, **426 keys**, parity enforced in CI; `t()` is typed against the generated key union, so a key missing from both files is a compile error |
+| Bilingual | English and Traditional Chinese, **440 keys**, parity enforced in CI; `t()` is typed against the generated key union, so a key missing from both files is a compile error |
 | Language before sign-in | A toggle on the login, signup and password-reset screens, labelled in the language it switches *to* — the setting is reachable exactly where it is first needed, and persists into the app |
 | Server-side language | The server renders push copy in that user's stored locale, not a global constant |
 | Screen readers | An accessible name on every control, headings marked for rotor navigation, and `accessibilityLanguage` telling VoiceOver which language a label is written in — the app's language is independent of the device's, and dates and times format in the app's locale, not the phone's |
@@ -161,14 +161,28 @@ Each of these was considered and declined; they are decisions, not gaps.
   reaches every AWS API and not the database. That single fact is why escalation
   and the telemetry rollup are each **two** Lambdas, and it is the first thing to
   understand before designing anything server-side.
-- **Schema changes go through a VPC-attached migration runner** — twelve applied.
-  Deploying the runner does not run anything; applying is a deliberate manual act.
-- **CI deploys** the app backend, the migration runner, the admin API, the
-  dashboard SPA, the patient web app, the Cognito trigger and the telemetry
-  Lambdas on push to `main`. The two escalation Lambdas are still built and
-  uploaded by hand.
-- **Alarms exist and publish to an SNS topic nothing is subscribed to**, so the
-  dashboard's Health page is currently the only place a firing alarm is visible.
+- **Schema changes go through a VPC-attached migration runner.** Deploying the
+  runner does not run anything; applying is a deliberate manual act. **Fifteen
+  applied**, verified against the live runner on 2026-09-08. `016_reminder_anchor_date`
+  exists in the tree and is deliberately not applied yet — it is still
+  uncommitted. Note that `tish-migrate status` reports only on the migration
+  files inside its own deployed zip, so a stale runner will report "nothing
+  pending" about files it has never seen; check its `LastModified` against
+  `git log` before believing the answer.
+- **CI deploys every Lambda** on push to `main` — the app backend, the migration
+  runner, **both escalation functions**, the admin API, the dashboard SPA, the
+  patient web app, the Cognito trigger and the telemetry Lambdas. The escalation
+  pair was hand-uploaded until 2026-09-08 and now ships from the same zip as the
+  backend, which is what it always ran from.
+- **Alarms publish to `tish-alarms`, which reaches a phone and an inbox.** SMS to
+  `+61414737424` (2026-09-08) and email to `admin@ti-smarthealth.com`
+  (2026-09-09). Before that the topic had no subscribers at all and the
+  dashboard's Health page was the only place a firing alarm was visible. Every
+  alarm sets `--ok-actions` as well as `--alarm-actions`, so one incident is two
+  notifications on each channel. ⚠ **The account's SNS spend limit is still
+  `$1`/month** (`MIGRATION.md` B1), roughly ten incidents of SMS before texts
+  stop without warning; the email half is uncapped, so an alarm is never lost
+  outright — but the one that wakes somebody can be.
 
 ## Status caveats — built, not proven
 
@@ -176,10 +190,11 @@ This is the honest section, and the one that changes fastest.
 
 | Area | State |
 | --- | --- |
-| **Device verification** | The alarm engine — sounds, bursts, the time-sensitive interruption level, exact alarms, the seven-day horizon, silent push, real push tokens — is **built and unverified on a physical phone**. It needs a native rebuild, and the last TestFlight attempt failed on a provisioning profile predating the Time Sensitive Notifications capability |
+| **Device verification** | **Done on iOS, 2026-09-08.** Testers exercised TestFlight build 11 on a physical iPhone: the bundled sounds play rather than the default chime, a burst arrives as consecutive alerts, alarms break through Focus modes, a snooze re-fires, responding clears the rest of the burst from the tray, a real Expo token registered, a server-side escalation push landed, an alarm rang on a later day with the app backgrounded, and a silent schedule-change push arrived in the background. **Android is a different matter** — the alarm-stream channel and exact alarms are still unverified and need an Android handset, not another build |
+| **Push receipts** | **Confirmed 2026-09-08.** Real deliveries produce real `ok` tickets, and the receipts poll has been observed reading one — the last unexercised branch in the escalation path |
 | **SMS** | Both SMS features — verification codes at sign-up and the SMS escalation rung — are blocked on the account's SNS sandbox. The app flag is off and the pool emails codes instead |
 | **E2E in CI** | Two iOS Maestro flows exist and were green on GitHub's macOS runners. They **cannot currently run**: the repository went private, macOS minutes bill at 10× wall-clock, and the choice between paying for minutes, paying for EAS, or making the repository public again is open |
-| **Web menus** | The gender and condition pickers are unusable on web — a `react-native-paper` `Menu` never animates in on this web stack. Parked deliberately; probably web-only, unconfirmed on device |
+| **Web menus** | The gender and condition pickers are unusable on web — a `react-native-paper` `Menu` never animates in on this web stack. **Confirmed web-only on 2026-09-08**: the same pickers work on a physical iOS device, so the failure is the web stack's missing native animated module and not the component. Still parked, but now bounded — it affects the patient web export only, never the shipping iOS app |
 | **Security** | The unauthenticated debug and reset routes, plaintext database credentials in Lambda environment variables, and the master-user database connection are all **known and deliberately deferred** to a separate security effort that is referenced throughout the repository but has no plan file in it |
 | **Test coverage** | Dependency-free modules and all three Lambdas are well covered by `node --test`. Components and hooks are not covered at all; that needs jest-expo, which has not been taken on |
 
