@@ -2,6 +2,8 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useFocusEffect, useRouter } from 'expo-router';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { announcementLocaleFrom } from '@/utils/announcements';
+import { localisedName } from '@/utils/vocabulary';
 import { appLocale } from '@/utils/locale';
 import {
   Alert,
@@ -32,7 +34,16 @@ import { GlobalStyles } from '../../styles/globalstyles';
 import { a11yLang, heading } from '@/utils/accessibility';
 
 // --- Types ---
-interface TestConfig { field_number: number; display_name: string; units: string; }
+// `display_name` is the flat value the server already resolved for this reader
+// (migration 018); the pair beside it is what lets a language switch re-label
+// the charts without refetching, exactly as `med_name` does on medications.
+interface TestConfig {
+  field_number: number;
+  display_name: string | null;
+  display_name_en?: string | null;
+  display_name_zh_hant?: string | null;
+  units: string;
+}
 interface TestResult { id: number; test_date: string;[key: string]: any; }
 
 
@@ -40,7 +51,14 @@ interface TestResult { id: number; test_date: string;[key: string]: any; }
 export default function ResultsScreen() {
   const theme = useTheme();
   const router = useRouter();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  // Same resolution the medication list does. The server already picked a side
+  // for this reader, but a language switch re-renders without refetching, so
+  // reading the pair here is what stops the charts staying labelled in the
+  // language they were fetched in.
+  const vocabularyLocale = announcementLocaleFrom(i18n.language);
+  const testName = (cfg: TestConfig | undefined) =>
+    localisedName(cfg, 'display_name', vocabularyLocale);
   const { width: windowWidth } = useWindowDimensions();
   const isDesktop = useIsDesktop();
   const { user, activeDependent } = useAuth();
@@ -263,7 +281,7 @@ export default function ResultsScreen() {
             <Surface style={styles.mainChartContainer} elevation={0}>
               <View style={styles.chartHeader}>
                 <Text style={GlobalStyles.labelMini}>{t('results.trendAnalysis')}</Text>
-                <Text style={styles.activeLabel}>{configs.find(c => c.field_number === selectedField)?.display_name}</Text>
+                <Text style={styles.activeLabel}>{testName(configs.find(c => c.field_number === selectedField))}</Text>
               </View>
               {getChartDataForField(selectedField) ? (
                 <LineChart
@@ -296,7 +314,7 @@ export default function ResultsScreen() {
                       onPress={() => setSelectedField(num)}
                       style={{ width: dynamicCardWidth, marginBottom: 12 }}
                       accessibilityRole="button"
-                      accessibilityLabel={config?.display_name ?? t('a11y.results.metricFallback', { number: num })} {...a11yLang()}
+                      accessibilityLabel={testName(config) ?? t('a11y.results.metricFallback', { number: num })} {...a11yLang()}
                       accessibilityState={{ selected: isSelected }}
                     >
                       <View style={[
@@ -305,7 +323,7 @@ export default function ResultsScreen() {
                       ]}>
                         <Surface style={styles.miniCardInner} elevation={0}>
                           <Text variant="labelSmall" numberOfLines={1} style={[styles.miniTitle, isSelected && { color: COLORS.primary }]}>
-                            {config?.display_name || t('results.fieldFallback', { num })}
+                            {testName(config) || t('results.fieldFallback', { num })}
                           </Text>
                           {data ? (
                             <View pointerEvents="none" style={styles.miniChartBox}>
@@ -382,7 +400,7 @@ export default function ResultsScreen() {
                       const isMissing = val === null || val === undefined || val === '';
                       return isMissing ? null : (
                         <View key={cfg.field_number} style={styles.dataRow}>
-                          <Text style={styles.dataLabel}>{cfg.display_name}</Text>
+                          <Text style={styles.dataLabel}>{testName(cfg)}</Text>
                           <Text style={styles.dataValue}>{val} <Text style={styles.unitText}>{cfg.units}</Text></Text>
                         </View>
                       );

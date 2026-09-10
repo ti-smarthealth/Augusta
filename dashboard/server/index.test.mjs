@@ -1094,3 +1094,140 @@ test('the vocabulary routes sit behind the same approval gate', async () => {
   assert.equal(res.statusCode, 403);
   assert.equal(pool.calls.length, 0);
 });
+
+// ---------------------------------------------------------------------------
+// Lab test names (migration 018) — the fourth vocabulary, and the only one not
+// shaped like the other three. Everything below is about that difference.
+// ---------------------------------------------------------------------------
+
+test('THE TEST VOCABULARY IS SERVED UNDER THE SAME CONTRACT AS THE OTHER THREE', async () => {
+  // `test_config` predates the vocabularies and keeps its own column names, so
+  // the aliasing is what lets one editor screen serve all four. Without it the
+  // page would need a second read path for a table that differs only in
+  // spelling.
+  let text;
+  const p = makePool([
+    { match: /FROM test_config/, result: (t) => {
+        text = t;
+        return { rows: [{ id: 1, name_en: 'Fasting glucose', name_zh_hant: null, units: 'mmol/L' }] };
+      } },
+  ]);
+  _setPoolForTests(p);
+  const res = await handler(httpEvent({ path: '/vocabularies/tests' }));
+  assert.equal(res.statusCode, 200);
+  assert.deepEqual(parse(res).entries, [
+    { id: 1, name_en: 'Fasting glucose', name_zh_hant: null, units: 'mmol/L' },
+  ]);
+  assert.match(text, /field_number AS id/);
+  assert.match(text, /display_name_en AS name_en/);
+  assert.match(text, /display_name_zh_hant AS name_zh_hant/);
+  // Ordered by the slot rather than the name: the number is what the app's
+  // quick-stats grid charts by, so the editor lists them in that order too.
+  assert.match(text, /ORDER BY field_number ASC/);
+});
+
+test('A NEW TEST TAKES THE LOWEST FREE SLOT, AND THE CLIENT CANNOT CHOOSE IT', async () => {
+  let text, params;
+  const p = makePool([
+    { match: /INSERT INTO test_config/, result: (t, v) => {
+        text = t; params = v;
+        return { rowCount: 1, rows: [{ id: 4, name_en: 'HbA1c', name_zh_hant: null, units: '%' }] };
+      } },
+  ]);
+  _setPoolForTests(p);
+  const res = await handler(httpEvent({
+    method: 'POST', path: '/vocabularies/tests',
+    // A slot in the body is ignored. It addresses a column of readings, so
+    // letting the client pick one would let it point a new test at another
+    // test's history.
+    body: { name_en: 'HbA1c', units: '%', field_number: 27 },
+  }));
+  assert.equal(res.statusCode, 201);
+  assert.equal(parse(res).entry.id, 4);
+  assert.match(text, /generate_series\(1, 30\)/);
+  assert.match(text, /NOT EXISTS/);
+  assert.match(text, /ORDER BY n/);
+  assert.deepEqual(params, ['HbA1c', null, '%'], 'only the name pair and units are bound');
+});
+
+test('with all thirty slots taken, adding a test is a 409 rather than a silent no-op', async () => {
+  // The insert selects from the *free* slots, so a full table inserts nothing
+  // and still succeeds. Reporting that as a 201 would leave the editor showing
+  // an entry the database does not have.
+  _setPoolForTests(makePool([{ match: /INSERT INTO test_config/, result: { rowCount: 0, rows: [] } }]));
+  const res = await handler(httpEvent({
+    method: 'POST', path: '/vocabularies/tests', body: { name_en: 'One too many' },
+  }));
+  assert.equal(res.statusCode, 409);
+  assert.equal(parse(res).code, 'NO_FREE_SLOT');
+});
+
+test('units are optional on a test; a dosage list is not on a medicine', async () => {
+  _setPoolForTests(makePool([
+    { match: /INSERT INTO test_config/, result: { rowCount: 1, rows: [{ id: 1, name_en: 'pH', name_zh_hant: null, units: null }] } },
+  ]));
+  const noUnits = await handler(httpEvent({
+    method: 'POST', path: '/vocabularies/tests', body: { name_en: 'pH' },
+  }));
+  assert.equal(noUnits.statusCode, 201, 'a ratio has no units and must still be addable');
+
+  // The same code path, with the requirement declared per column: a medicine
+  // without a dosage list leaves the reminder form with nothing to pick from.
+  const noDosage = await handler(httpEvent({
+    method: 'POST', path: '/vocabularies/medications', body: { name_en: 'Aspirin' },
+  }));
+  assert.equal(noDosage.statusCode, 400);
+  assert.equal(parse(noDosage).field, 'default_dosage');
+});
+
+test('EDITING A TEST CANNOT MOVE IT TO ANOTHER SLOT', async () => {
+  // The slot is the column its readings are stored in, so a rename that also
+  // renumbered would re-label every reading already taken.
+  let text;
+  const p = makePool([
+    { match: /UPDATE test_config/, result: (t) => {
+        text = t;
+        return { rowCount: 1, rows: [{ id: 2, name_en: 'HbA1c', name_zh_hant: '糖化血色素', units: '%' }] };
+      } },
+  ]);
+  _setPoolForTests(p);
+  const res = await handler(httpEvent({
+    method: 'PUT', path: '/vocabularies/tests/2',
+    body: { name_en: 'HbA1c', name_zh_hant: '糖化血色素', units: '%', field_number: 9 },
+  }));
+  assert.equal(res.statusCode, 200);
+  // Only the SET list, so the `WHERE field_number = $4` that addresses the row
+  // does not satisfy an assertion about what the row is allowed to change to.
+  const setClause = text.slice(text.indexOf('SET'), text.indexOf('WHERE'));
+  assert.doesNotMatch(setClause, /field_number/, 'the slot must never be assignable');
+  assert.match(text, /WHERE field_number = \$4/);
+});
+
+test('DELETING A TEST THAT STILL HAS READINGS FAILS LOUDLY', async () => {
+  // Nothing references a `test_config` row, so Postgres will not refuse this
+  // for us the way it does for a gender in use. Freeing the slot would hand the
+  // next test created somebody else's history, so the readings are counted
+  // first and the delete is never attempted.
+  const p = makePool([{ match: /count\(\*\)/, result: { rows: [{ readings: 3 }] } }]);
+  _setPoolForTests(p);
+  const res = await handler(httpEvent({ method: 'DELETE', path: '/vocabularies/tests/2' }));
+  assert.equal(res.statusCode, 409);
+  assert.equal(parse(res).code, 'ENTRY_IN_USE');
+  // The message has to say what is blocking it and what to do instead.
+  assert.match(parse(res).error, /3 readings/);
+  assert.match(parse(res).error, /rename/i);
+  assert.match(p.calls[0].text, /FROM test_results\s+WHERE field_2 IS NOT NULL/);
+  assert.equal(p.calls.some((c) => /DELETE FROM/.test(c.text)), false, 'nothing should be deleted');
+});
+
+test('a test with no readings deletes, and by its slot rather than by an id it has not got', async () => {
+  const p = makePool([
+    { match: /count\(\*\)/, result: { rows: [{ readings: 0 }] } },
+    { match: /DELETE FROM test_config/, result: { rowCount: 1, rows: [{ id: 5 }] } },
+  ]);
+  _setPoolForTests(p);
+  const res = await handler(httpEvent({ method: 'DELETE', path: '/vocabularies/tests/5' }));
+  assert.equal(res.statusCode, 200);
+  assert.deepEqual(parse(res), { deleted: 5 });
+  assert.match(p.calls[1].text, /WHERE field_number = \$1/);
+});

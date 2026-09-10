@@ -269,8 +269,14 @@ test('POST /reset-db does not drop users, and says what it preserved', async () 
   assert.equal(res.statusCode, 200);
   // `announcement_types` joined the list in migration 010 — the first preserved
   // table whose rows staff edit, rather than reference data that is seeded once.
-  assert.deepEqual(parse(res).preserved, ['users', 'genders', 'conditions', 'user_relationships', 'announcement_types']);
+  // `test_config` joined it in 018 for the same reason, once the Envars page
+  // grew a tab for the test names.
+  assert.deepEqual(parse(res).preserved, ['users', 'genders', 'conditions', 'user_relationships', 'announcement_types', 'test_config']);
   assert.doesNotMatch(sql, /DROP TABLE IF EXISTS announcement_types\b/);
+  assert.doesNotMatch(sql, /DROP TABLE IF EXISTS test_config\b/);
+  // But the readings *are* rebuilt: keeping the names while the numbers go is
+  // what leaves a freed slot clean for the next test to take.
+  assert.match(sql, /DROP TABLE IF EXISTS test_results\b/);
 
   // The assertion that matters: the SQL actually sent, not just the response.
   assert.doesNotMatch(sql, /DROP TABLE IF EXISTS users\b/);
@@ -2475,6 +2481,36 @@ test('an unknown locale falls to the default rather than resolving to nothing', 
   ]));
   const res = await handler(restEvent({ path: '/genders', query: { locale: 'kl' } }));
   assert.equal(parse(res)[0].name, '男性');
+});
+
+// ---------------------------------------------------------------------------
+// Migration 018 — the test names join them
+// ---------------------------------------------------------------------------
+
+test('GET /test-config RESOLVES THE NAME AND KEEPS THE FLAT KEY INSTALLED BUILDS READ', async () => {
+  // The flat `display_name` is not a convenience: 018 renamed the column to
+  // `display_name_en`, and every build already on a device reads exactly
+  // `display_name` and ships independently of this Lambda. Dropping it would
+  // blank the label under every chart on the results screen until each of them
+  // updated — while a client that resolves the pair itself loses nothing by it
+  // being there.
+  _setPoolForTests(makePool([
+    { match: /FROM test_config/, result: { rows: [
+      { field_number: 1, display_name_en: 'Fasting glucose', display_name_zh_hant: '空腹血糖', units: 'mmol/L' },
+      // Untranslated, which is the seeded state: it must fall back to English
+      // rather than leaving a reading with no label beside it.
+      { field_number: 2, display_name_en: 'HbA1c', display_name_zh_hant: null, units: '%' },
+    ] } },
+  ]));
+  const res = await handler(restEvent({ path: '/test-config', query: { locale: 'zh-Hant' } }));
+  assert.equal(res.statusCode, 200);
+  const rows = parse(res);
+  assert.equal(rows[0].display_name, '空腹血糖');
+  assert.equal(rows[1].display_name, 'HbA1c');
+  // The pair survives alongside it, which is what lets the app re-label its
+  // charts on a language switch without refetching.
+  assert.equal(rows[0].display_name_en, 'Fasting glucose');
+  assert.equal(rows[0].display_name_zh_hant, '空腹血糖');
 });
 
 test('POST /medication-library accepts both sides when they are given', async () => {

@@ -303,7 +303,12 @@ const TABLE_DEFINITIONS = [
         ON announcements (published_at DESC) WHERE published_at IS NOT NULL;
 
     CREATE INDEX announcements_type_id_idx ON announcements (type_id);` },
-    { name: 'test_config', create: `CREATE TABLE test_config (field_number INTEGER PRIMARY KEY, display_name TEXT NOT NULL, units TEXT, description TEXT);` },
+    // `field_number` is not a surrogate id: it is the slot in `test_results`
+    // below that this row names, so it is chosen when the test is created and
+    // never edited afterwards — changing it would silently re-label every
+    // reading already recorded in that column. Localised in migration 018;
+    // `units` is not, because "mmol/L" is a symbol rather than a word.
+    { name: 'test_config', create: `CREATE TABLE test_config (field_number INTEGER PRIMARY KEY, display_name_en TEXT NOT NULL, display_name_zh_hant TEXT, units TEXT, description TEXT);` },
     { name: 'test_results', create: `CREATE TABLE test_results (
         id SERIAL PRIMARY KEY,
         user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
@@ -588,7 +593,16 @@ export const APP_TIMEZONE = 'Asia/Taipei';
 // data that happens to be seeded once; these are somebody's work, and a reset
 // that recreated them from SEED_SQL would silently discard every category they
 // had added and every translation they had written.
-export const RESET_PRESERVED_TABLES = ['users', 'genders', 'conditions', 'user_relationships', 'announcement_types'];
+//
+// `test_config` joined it for exactly that reason once the Envars page grew a
+// tab for it (migration 018). The seeded test names are placeholders somebody
+// is expected to replace with the panel's real assay list, and a reset that
+// reinstated "Starlight Level" over that work would be the same quiet loss.
+// `test_results` is deliberately *not* preserved alongside it: keeping the
+// names while the readings are rebuilt is the coherent half, and it is what
+// keeps a freed `field_number` free of readings that would be re-labelled if
+// the slot were reused.
+export const RESET_PRESERVED_TABLES = ['users', 'genders', 'conditions', 'user_relationships', 'announcement_types', 'test_config'];
 
 /**
  * Tables that existed once, have no definition any more, and should be removed if
@@ -753,7 +767,11 @@ export const SEED_SQL = `
     -- overwrite a label they rewrote.
     INSERT INTO announcement_types (label_en, label_zh_hant, color, sort_order) VALUES ('System Updates', '系統更新', '#6366F1', 1), ('News', '最新消息', '#22C55E', 2), ('Announcements', '公告', '#F59E0B', 3) ON CONFLICT (lower(label_en)) DO NOTHING;
     INSERT INTO medication_library (name_en, default_dosage) VALUES ('Anti-Telepathy Serum', '200mg, 500mg'), ('High-Grade Peanut Extract', '30mg'), ('Starlight Stamina Mints', '5mg');
-    INSERT INTO test_config (field_number, display_name, units) VALUES (1, 'Starlight Level', 'g/dL'), (2, 'Reflex Factor', 'ms'), (3, 'Telepathy Wave', 'Hz');
+    -- Guarded like the other preserved lookups, and for the same reason: staff
+    -- edit these on the Envars page now, so a reset must not reinstate the
+    -- placeholders over the assay list they configured. No Chinese, per 015 and
+    -- 018 — clinical wording is a content decision, not a migration's.
+    INSERT INTO test_config (field_number, display_name_en, units) VALUES (1, 'Starlight Level', 'g/dL'), (2, 'Reflex Factor', 'ms'), (3, 'Telepathy Wave', 'Hz') ON CONFLICT (field_number) DO NOTHING;
 `;
 
 /**
@@ -1419,7 +1437,17 @@ export const handler = async (event) => {
                 fail('METHOD_NOT_ALLOWED', { message: `Method ${method} not allowed on ${path}.` });
             }
         }
-        else if (path === "/test-config") { body = (await pool.query('SELECT * FROM test_config ORDER BY field_number ASC')).rows; }
+        // Migration 018 made the test names a localised vocabulary, so this
+        // answers the way `/genders` and `/conditions` do: the per-locale pair
+        // is returned as-is *and* flattened into `display_name` for the reader.
+        // The flat key is what keeps installed builds working across the
+        // rename — they read exactly that and ship independently of this
+        // Lambda — and it costs a client that resolves the pair itself nothing.
+        else if (path === "/test-config") {
+            const locale = await resolveRequestLocale(queryParams, cognitoSub, getUserId);
+            body = (await pool.query('SELECT * FROM test_config ORDER BY field_number ASC')).rows
+                .map((r) => ({ ...r, display_name: localisedField(r, 'display_name', locale) }));
+        }
 
         else if (path === "/check-availability" && method === "GET") {
             const email = queryParams.email ? queryParams.email.toLowerCase().trim() : null;

@@ -2,6 +2,8 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { goBackOrHome } from '@/utils/navigation';
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { announcementLocaleFrom } from '@/utils/announcements';
+import { localisedName } from '@/utils/vocabulary';
 import { ActivityIndicator, Alert, Platform, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { appLocale } from '@/utils/locale';
 import {
@@ -27,7 +29,11 @@ import { apiErrorMessage, describeApiFailure } from '@/utils/api-errors';
 export default function ResultsFormScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  // Migration 018 — the test names are a localised vocabulary now, resolved the
+  // same way the results dashboard resolves them, so the two screens cannot
+  // label the same field differently.
+  const vocabularyLocale = announcementLocaleFrom(i18n.language);
   const { activeDependent } = useAuth();
 
   // 1. Determine Mode (Add vs Edit)
@@ -236,11 +242,16 @@ export default function ResultsFormScreen() {
         {configs.map((cfg) => {
           const key = `field_${cfg.field_number}`;
           const hasError = !!fieldErrors[key];
+          // Units are optional — a ratio or a blood group has none — so the
+          // parenthesis is only drawn when there is something to put in it,
+          // rather than labelling the input "Fasting glucose (undefined)".
+          const name = localisedName(cfg, 'display_name', vocabularyLocale) ?? '';
+          const label = cfg.units ? `${name} (${cfg.units})` : name;
           return (
             <View key={cfg.field_number} style={styles.fieldContainer}>
               <TextInput
-                label={`${cfg.display_name} (${cfg.units})`}
-                accessibilityLabel={`${cfg.display_name} (${cfg.units})`} {...a11yLang()}
+                label={label}
+                accessibilityLabel={label} {...a11yLang()}
                 value={formValues[key]?.toString() || ''}
                 mode="outlined"
                 outlineColor={COLORS.background}

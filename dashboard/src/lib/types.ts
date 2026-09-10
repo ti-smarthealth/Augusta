@@ -33,23 +33,30 @@ export interface SaveTranslationsResponse {
  * invented this afternoon has no translation key and never will.
  */
 /**
- * The three lookup vocabularies whose names reach a patient's screen
- * (migration 014). The slug is what the API routes on.
+ * The lookup vocabularies whose names reach a patient's screen (migration 014,
+ * and `tests` in 018). The slug is what the API routes on.
  */
-export const VOCABULARIES = ["genders", "conditions", "medications"] as const
+export const VOCABULARIES = ["genders", "conditions", "medications", "tests"] as const
 export type VocabularySlug = (typeof VOCABULARIES)[number]
 
 /**
  * One entry. `name_en` is the natural key and is required; `name_zh_hant` is
  * nullable on purpose — staff can add an entry now and translate it later, and
  * the app falls back to English rather than rendering a blank in between.
+ *
+ * The names are the API's, not the table's: `tests` is really
+ * `test_config.field_number` / `display_name_en` / `display_name_zh_hant`,
+ * aliased server-side so one editor serves every vocabulary.
  */
 export interface VocabularyEntry {
+  /** For `tests` this is the slot in `test_results`, not a surrogate key. */
   id: number
   name_en: string
   name_zh_hant: string | null
-  /** Medication library only; the other two vocabularies are name-only. */
+  /** Medication library only; the other vocabularies do not carry a dosage. */
   default_dosage?: string
+  /** Lab tests only, and optional even there — a ratio has no units. */
+  units?: string | null
 }
 
 export interface VocabularyListResponse {
@@ -61,6 +68,7 @@ export interface SaveVocabularyEntryRequest {
   name_en: string
   name_zh_hant: string | null
   default_dosage?: string
+  units?: string
 }
 
 export interface AnnouncementType {

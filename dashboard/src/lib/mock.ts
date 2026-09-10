@@ -171,8 +171,25 @@ const mockVocabularies: Record<VocabularySlug, VocabularyEntry[]> = {
     { id: 1, name_en: 'Anti-Telepathy Serum', name_zh_hant: null, default_dosage: '200mg, 500mg' },
     { id: 2, name_en: 'Starlight Stamina Mints', name_zh_hant: null, default_dosage: '5mg' },
   ],
+  // Migration 018. The ids are `test_config.field_number` — the slot in
+  // `test_results` each row names — so they are sparse on purpose here: 1, 2
+  // and 4 is what a table looks like after somebody deleted the third test,
+  // and the editor has to show that rather than a tidy 1, 2, 3.
+  tests: [
+    { id: 1, name_en: 'Starlight Level', name_zh_hant: null, units: 'g/dL' },
+    { id: 2, name_en: 'Reflex Factor', name_zh_hant: null, units: 'ms' },
+    { id: 4, name_en: 'Telepathy Wave', name_zh_hant: '心靈感應波', units: 'Hz' },
+  ],
 }
 let nextVocabularyId = 100
+
+/** `test_results` has thirty slots; the lowest unoccupied one, or null if full. */
+function nextFreeSlot(entries: VocabularyEntry[]): number | null {
+  for (let slot = 1; slot <= 30; slot += 1) {
+    if (!entries.some((e) => e.id === slot)) return slot
+  }
+  return null
+}
 
 export const mockApi = {
   async getTranslations(): Promise<TranslationsResponse> {
@@ -245,8 +262,15 @@ export const mockApi = {
 
   async createVocabularyEntry(slug: VocabularySlug, req: SaveVocabularyEntryRequest): Promise<{ entry: VocabularyEntry }> {
     await delay(200)
-    const entry: VocabularyEntry = { id: nextVocabularyId++, ...req }
-    mockVocabularies[slug] = [...(mockVocabularies[slug] ?? []), entry]
+    const list = mockVocabularies[slug] ?? []
+    // `tests` is keyed by its slot in `test_results`, and the server assigns
+    // the lowest free one rather than the next serial. Mocked faithfully
+    // because the page prints the number: a mock that handed out 100 would
+    // show a slot that cannot exist.
+    const id = slug === "tests" ? nextFreeSlot(list) : nextVocabularyId++
+    if (id === null) throw new Error("All 30 result slots are in use. Delete a test before adding another.")
+    const entry: VocabularyEntry = { id, ...req }
+    mockVocabularies[slug] = [...list, entry].sort((a, b) => (slug === "tests" ? a.id - b.id : 0))
     return { entry: structuredClone(entry) }
   },
 

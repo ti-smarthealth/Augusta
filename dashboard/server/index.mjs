@@ -127,7 +127,7 @@ export const ALLOWED_TABLES = [
 // ---------------------------------------------------------------------------
 
 /**
- * The three lookup tables whose names reach a patient's screen.
+ * The lookup tables whose names reach a patient's screen.
  *
  * **Keyed by a slug the client sends, resolved to a table name here and never
  * anywhere else.** The table is interpolated into SQL, so it must come from
@@ -137,29 +137,95 @@ export const ALLOWED_TABLES = [
  * `inUseMessage` is per-vocabulary because the 409 has to tell staff what is
  * actually blocking the delete, and "used by one or more articles" would be
  * nonsense for a gender.
+ *
+ * Everything except `table` has a default (`VOCABULARY_DEFAULTS`), so the three
+ * tables migration 014 built to this shape declare almost nothing. `tests` is
+ * the one that predates the shape and has to say so column by column — see its
+ * own comment.
  */
 export const VOCABULARIES = {
   genders: {
     table: 'genders',
-    columns: [],
     inUseMessage: 'That gender is still selected on one or more profiles.',
   },
   conditions: {
     table: 'conditions',
-    columns: [],
     inUseMessage: 'That condition is still selected on one or more profiles.',
   },
   medications: {
     table: 'medication_library',
     // The library carries a dosage list alongside the name; the other two are
-    // name-only, and a column list is what keeps one handler serving all three.
-    columns: ['default_dosage'],
+    // name-only, and a column list is what keeps one handler serving all four.
+    // Required, because a dosage list is what the reminder form picks from.
+    columns: [{ name: 'default_dosage', required: true }],
     inUseMessage: 'That medicine is still used by one or more reminders.',
+  },
+  /**
+   * Lab test names (migration 018) — the fourth vocabulary, and the only one
+   * that is not shaped like the other three.
+   *
+   * **`field_number` is a slot, not a surrogate id.** `test_results` has thirty
+   * fixed columns, `field_1` … `field_30`, and a `test_config` row is what says
+   * what one of them means. Three consequences the handler has to honour:
+   *
+   * - it is chosen at insert rather than generated, so a new test takes the
+   *   lowest free slot (`slots`). Lowest rather than next, because the app's
+   *   quick-stats grid charts fields 1–4 and leaving holes would strand them;
+   * - it is never updatable. Moving a test to another slot would silently
+   *   re-label every reading already recorded in the old one;
+   * - deleting a test frees the slot for reuse, so it is refused while
+   *   `readings` still holds values under it — otherwise the next test created
+   *   would inherit somebody's cholesterol figures as its own history.
+   *
+   * `units` is optional: most assays have one, a ratio or a blood group does
+   * not, and requiring it would force staff to invent one.
+   */
+  tests: {
+    table: 'test_config',
+    key: 'field_number',
+    nameEn: 'display_name_en',
+    nameZh: 'display_name_zh_hant',
+    columns: [{ name: 'units', required: false }],
+    order: 'field_number ASC',
+    slots: 30,
+    readings: { table: 'test_results', columnPrefix: 'field_' },
+    inUseMessage: 'That test still has readings recorded against it.',
   },
 };
 
+/**
+ * What migration 014's three tables look like, so they need not repeat it. A
+ * vocabulary that keeps its own column names overrides what differs and the
+ * handler reads only the merged form — never `VOCABULARIES[slug]` directly.
+ */
+const VOCABULARY_DEFAULTS = {
+  key: 'id',
+  nameEn: 'name_en',
+  nameZh: 'name_zh_hant',
+  columns: [],
+  order: 'name_en ASC',
+};
+
 export function vocabularyFor(slug) {
-  return Object.prototype.hasOwnProperty.call(VOCABULARIES, slug) ? VOCABULARIES[slug] : null;
+  if (!Object.prototype.hasOwnProperty.call(VOCABULARIES, slug)) return null;
+  return { ...VOCABULARY_DEFAULTS, ...VOCABULARIES[slug] };
+}
+
+/**
+ * The client contract is `id` / `name_en` / `name_zh_hant` whatever the table
+ * underneath calls them, so one editor screen serves every vocabulary. Aliased
+ * only where the names actually differ, which keeps the SQL for the original
+ * three byte-identical to what it was before `tests` existed.
+ */
+const aliasColumn = (column, as) => (column === as ? column : `${column} AS ${as}`);
+
+function vocabularyColumns(vocab) {
+  return [
+    aliasColumn(vocab.key, 'id'),
+    aliasColumn(vocab.nameEn, 'name_en'),
+    aliasColumn(vocab.nameZh, 'name_zh_hant'),
+    ...vocab.columns.map((c) => c.name),
+  ].join(', ');
 }
 
 // ---------------------------------------------------------------------------
@@ -988,9 +1054,8 @@ export async function handler(event) {
         const vocab = vocabularyFor(route.vocabulary);
         if (!vocab) return json(404, { error: `Unknown vocabulary: ${route.vocabulary}` });
         const db = getPool();
-        const extra = vocab.columns.length ? `, ${vocab.columns.join(', ')}` : '';
         const res = await db.query(
-          `SELECT id, name_en, name_zh_hant${extra} FROM ${vocab.table} ORDER BY name_en ASC`);
+          `SELECT ${vocabularyColumns(vocab)} FROM ${vocab.table} ORDER BY ${vocab.order}`);
         return json(200, { entries: res.rows, vocabulary: route.vocabulary });
       }
 
@@ -1015,27 +1080,61 @@ export async function handler(event) {
         const nameZh = isFilled(payload?.name_zh_hant) ? payload.name_zh_hant.trim() : null;
 
         // Only the columns this vocabulary declares, so a stray field in the
-        // body cannot reach a table that has no such column.
-        const extraValues = vocab.columns.map((c) => (isFilled(payload?.[c]) ? payload[c].trim() : null));
+        // body cannot reach a table that has no such column. Required is
+        // per-column: a medicine without its dosage list leaves the reminder
+        // form with nothing to pick from, while a test without units is
+        // ordinary (a ratio has none).
+        const extraValues = vocab.columns.map((c) => (isFilled(payload?.[c.name]) ? payload[c.name].trim() : null));
         for (const [i, c] of vocab.columns.entries()) {
-          if (extraValues[i] === null) return json(400, { error: `${c} is required.`, code: 'FIELD_REQUIRED', field: c });
+          if (c.required && extraValues[i] === null) {
+            return json(400, { error: `${c.name} is required.`, code: 'FIELD_REQUIRED', field: c.name });
+          }
         }
+
+        const cols = [vocab.nameEn, vocab.nameZh, ...vocab.columns.map((c) => c.name)];
+        const holders = cols.map((_, i) => `$${i + 1}`).join(', ');
 
         try {
           if (route.name === 'createVocabularyEntry') {
-            const cols = ['name_en', 'name_zh_hant', ...vocab.columns];
-            const holders = cols.map((_, i) => `$${i + 1}`).join(', ');
+            // **A slot-keyed vocabulary supplies its own key**, taking the
+            // lowest number nothing occupies. As one statement rather than a
+            // read-then-insert, so two administrators adding a test at the same
+            // moment cannot both be told slot 5 is free — the second one's
+            // `NOT EXISTS` simply sees the first row and moves to 6.
+            if (vocab.slots) {
+              const res = await db.query(
+                `INSERT INTO ${vocab.table} (${vocab.key}, ${cols.join(', ')})
+                 SELECT n, ${holders}
+                   FROM generate_series(1, ${vocab.slots}) AS n
+                  WHERE NOT EXISTS (SELECT 1 FROM ${vocab.table} taken WHERE taken.${vocab.key} = n)
+                  ORDER BY n
+                  LIMIT 1
+                 RETURNING ${vocabularyColumns(vocab)}`,
+                [nameEn, nameZh, ...extraValues]);
+              if (res.rowCount === 0) {
+                return json(409, {
+                  error: `All ${vocab.slots} result slots are in use. Delete a test before adding another.`,
+                  code: 'NO_FREE_SLOT',
+                });
+              }
+              return json(201, { entry: res.rows[0] });
+            }
+
             const res = await db.query(
-              `INSERT INTO ${vocab.table} (${cols.join(', ')}) VALUES (${holders}) RETURNING id, ${cols.join(', ')}`,
+              `INSERT INTO ${vocab.table} (${cols.join(', ')}) VALUES (${holders}) RETURNING ${vocabularyColumns(vocab)}`,
               [nameEn, nameZh, ...extraValues]);
             return json(201, { entry: res.rows[0] });
           }
 
-          const sets = ['name_en = $1', 'name_zh_hant = $2',
-            ...vocab.columns.map((c, i) => `${c} = $${i + 3}`)];
+          // The key is never in the SET list — for `tests` that is load-bearing
+          // rather than incidental. Moving a row to another `field_number`
+          // would re-label every reading already stored in the old column, so
+          // a rename stays a rename.
+          const sets = [`${vocab.nameEn} = $1`, `${vocab.nameZh} = $2`,
+            ...vocab.columns.map((c, i) => `${c.name} = $${i + 3}`)];
           const res = await db.query(
-            `UPDATE ${vocab.table} SET ${sets.join(', ')} WHERE id = $${vocab.columns.length + 3}
-             RETURNING id, name_en, name_zh_hant${vocab.columns.length ? `, ${vocab.columns.join(', ')}` : ''}`,
+            `UPDATE ${vocab.table} SET ${sets.join(', ')} WHERE ${vocab.key} = $${vocab.columns.length + 3}
+             RETURNING ${vocabularyColumns(vocab)}`,
             [nameEn, nameZh, ...extraValues, route.id]);
           if (res.rowCount === 0) return json(404, { error: `No entry with id ${route.id}` });
           return json(200, { entry: res.rows[0] });
@@ -1043,6 +1142,18 @@ export async function handler(event) {
           // Migration 014's unique index on lower(name_en). Genders and
           // conditions have one; the medication library deliberately does not.
           if (e?.code === '23505') {
+            // A slot-keyed vocabulary has no unique name — its only unique
+            // constraint is the primary key, so the one thing a 23505 can mean
+            // here is that another request took the slot between this
+            // statement's `NOT EXISTS` and its insert. Saying "that English
+            // name is taken" would send staff looking for a duplicate that
+            // does not exist.
+            if (vocab.slots) {
+              return json(409, {
+                error: 'Another test claimed that slot just now. Try again.',
+                code: 'SLOT_TAKEN',
+              });
+            }
             return json(409, {
               error: 'Another entry already uses that English name.',
               code: 'NAME_IN_USE',
@@ -1056,8 +1167,38 @@ export async function handler(event) {
         const vocab = vocabularyFor(route.vocabulary);
         if (!vocab) return json(404, { error: `Unknown vocabulary: ${route.vocabulary}` });
         const db = getPool();
+
+        // **A slot has no foreign key to protect it, so the guard is explicit.**
+        // The other three vocabularies are referenced by `users.gender_id` and
+        // friends, and Postgres refuses the delete for us. Nothing references a
+        // `test_config` row: the readings live in `test_results.field_N`, tied
+        // to it by number alone. Deleting the row would leave those readings
+        // orphaned *and* free the slot, so the next test created would adopt
+        // them as its own history — which is why this counts them first.
+        if (vocab.readings) {
+          // The slot is interpolated into a column name, so it is checked
+          // against the declared range rather than trusted from the URL, even
+          // though the route pattern already matched digits only.
+          const slot = Number(route.id);
+          if (!Number.isInteger(slot) || slot < 1 || slot > vocab.slots) {
+            return json(404, { error: `No entry with id ${route.id}` });
+          }
+          const used = await db.query(
+            `SELECT count(*)::int AS readings FROM ${vocab.readings.table}
+              WHERE ${vocab.readings.columnPrefix}${slot} IS NOT NULL`);
+          const readings = used.rows[0]?.readings ?? 0;
+          if (readings > 0) {
+            return json(409, {
+              error: `${vocab.inUseMessage} ${readings} ${readings === 1 ? 'reading is' : 'readings are'} stored under it — rename the test instead, or clear those readings first.`,
+              code: 'ENTRY_IN_USE',
+            });
+          }
+        }
+
         try {
-          const res = await db.query(`DELETE FROM ${vocab.table} WHERE id = $1 RETURNING id`, [route.id]);
+          const res = await db.query(
+            `DELETE FROM ${vocab.table} WHERE ${vocab.key} = $1 RETURNING ${aliasColumn(vocab.key, 'id')}`,
+            [route.id]);
           if (res.rowCount === 0) return json(404, { error: `No entry with id ${route.id}` });
           return json(200, { deleted: route.id });
         } catch (e) {

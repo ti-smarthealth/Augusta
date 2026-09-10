@@ -291,6 +291,11 @@ were assumed by the original plan and neither is available:
   > permission is needed. **Allow ~30 seconds after deploying** before testing:
   > the first preflight can still 403 while the stage propagates, which looks
   > exactly like the mistake you just fixed.
+  >
+  > Two resources take a path parameter — `/tables/{name}` and
+  > `/vocabularies/{name}` (with `/vocabularies/{name}/{id}` under it) — so a
+  > new viewer table or a new Envars vocabulary is a code change only. `tests`
+  > was added that way in migration 018 and needed nothing on the gateway.
 - **Amplify Hosting is in ap-northeast-2 (Seoul).** Only the build and control
   plane live there; the assets are served from CloudFront either way, so Taiwan
   users are not taking a Seoul round-trip. Seoul was chosen because the account's

@@ -79,11 +79,15 @@ const medicationDoses = [
   { id: 12, reminder_id: 1, user_id: 101, scheduled_for: iso(-1, 8, 30), confirmed_at: iso(-1, 8, 41), confirmed_by: 101, snoozed_until: null, snooze_count: 0, med_name: 'Metformin', selected_dosage: '500mg' },
 ];
 
+// Shaped like the real `/test-config` since migration 018: the per-locale pair
+// plus the flat `display_name` the server resolves. One row is deliberately
+// left without Chinese, because falling back to English is the state the
+// screens have to handle and the mock is the only place it can be seen offline.
 const testConfig = [
-  { field_number: 1, display_name: 'Fasting glucose', units: 'mmol/L' },
-  { field_number: 2, display_name: 'HbA1c', units: '%' },
-  { field_number: 3, display_name: 'Total cholesterol', units: 'mmol/L' },
-  { field_number: 4, display_name: 'Systolic BP', units: 'mmHg' },
+  { field_number: 1, display_name: 'Fasting glucose', display_name_en: 'Fasting glucose', display_name_zh_hant: '空腹血糖', units: 'mmol/L' },
+  { field_number: 2, display_name: 'HbA1c', display_name_en: 'HbA1c', display_name_zh_hant: '糖化血色素', units: '%' },
+  { field_number: 3, display_name: 'Total cholesterol', display_name_en: 'Total cholesterol', display_name_zh_hant: '總膽固醇', units: 'mmol/L' },
+  { field_number: 4, display_name: 'Systolic BP', display_name_en: 'Systolic BP', display_name_zh_hant: null, units: 'mmHg' },
 ];
 
 let testResults = [

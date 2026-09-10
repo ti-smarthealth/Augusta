@@ -23,7 +23,7 @@ import type { SaveVocabularyEntryRequest, VocabularyEntry, VocabularySlug } from
  * against. Renaming end to end is a small, separate change if it is wanted.
  *
  * **Why this page exists.** Everything the app writes itself lives in
- * `locales/*.json` and is edited on the Translations page. These three are
+ * `locales/*.json` and is edited on the Translations page. These four are
  * different: they are *rows*, so a gender or a medicine name went out in
  * whatever language somebody typed, and a profile in 中文 still read "Male".
  * They cannot be fixed by adding a key, because a medicine added this afternoon
@@ -34,14 +34,42 @@ import type { SaveVocabularyEntryRequest, VocabularyEntry, VocabularySlug } from
  * two-minute pass into forty clicks.
  */
 
-const TABS: { slug: VocabularySlug; label: string; blurb: string; hasDosage?: boolean }[] = [
+/**
+ * The one column a vocabulary may carry beyond the name pair. Two of the four
+ * have one, and describing it here rather than branching on the slug is what
+ * keeps a single editor serving all of them.
+ */
+type ExtraColumn = { key: "default_dosage" | "units"; label: string; placeholder: string }
+
+const TABS: {
+  slug: VocabularySlug
+  label: string
+  blurb: string
+  extra?: ExtraColumn
+  /** `tests` alone is keyed by something worth reading; see its blurb. */
+  showSlot?: boolean
+}[] = [
   { slug: "genders", label: "Genders", blurb: "Shown on the signup form and the profile screen." },
   { slug: "conditions", label: "Conditions", blurb: "Shown on the signup form and the profile screen." },
   {
     slug: "medications",
     label: "Medication library",
     blurb: "Shown wherever a reminder names its medicine, including the alarm itself.",
-    hasDosage: true,
+    extra: { key: "default_dosage", label: "Dosages", placeholder: "e.g. 200mg, 500mg" },
+  },
+  {
+    slug: "tests",
+    label: "Test results",
+    // The field number is surfaced rather than hidden because it is not a row
+    // id: it is the column in `test_results` the readings live in, so it
+    // explains why a test cannot be reordered and why deleting one that has
+    // readings is refused. Staff who never look at it lose nothing.
+    blurb:
+      "Named on the results dashboard — under the chart, on the quick-stat cards and beside every reading. " +
+      "The field number is the column each test's readings are stored in: it is assigned when you add the test and fixed afterwards, " +
+      "and a test with readings has to be renamed rather than deleted.",
+    extra: { key: "units", label: "Units", placeholder: "e.g. mmol/L (optional)" },
+    showSlot: true,
   },
 ]
 
@@ -72,14 +100,21 @@ export function EnvarsPage() {
         ))}
       </div>
 
-      <EnvarEditor key={active} slug={active} label={tab.label} blurb={tab.blurb} hasDosage={!!tab.hasDosage} />
+      <EnvarEditor
+        key={active}
+        slug={active}
+        label={tab.label}
+        blurb={tab.blurb}
+        extra={tab.extra}
+        showSlot={!!tab.showSlot}
+      />
     </div>
   )
 }
 
 function EnvarEditor({
-  slug, label, blurb, hasDosage,
-}: { slug: VocabularySlug; label: string; blurb: string; hasDosage: boolean }) {
+  slug, label, blurb, extra, showSlot,
+}: { slug: VocabularySlug; label: string; blurb: string; extra?: ExtraColumn; showSlot: boolean }) {
   const api = useApi()
   const qc = useQueryClient()
   const query = useQuery({ queryKey: ["vocabulary", slug], queryFn: () => api.listVocabulary(slug) })
@@ -122,14 +157,14 @@ function EnvarEditor({
     setDraft({
       name_en: entry.name_en,
       name_zh_hant: entry.name_zh_hant,
-      ...(hasDosage ? { default_dosage: entry.default_dosage ?? "" } : {}),
+      ...(extra ? { [extra.key]: entry[extra.key] ?? "" } : {}),
     })
   }
 
   const startNew = () => {
     setError(null)
     setEditing("new")
-    setDraft({ name_en: "", name_zh_hant: null, ...(hasDosage ? { default_dosage: "" } : {}) })
+    setDraft({ name_en: "", name_zh_hant: null, ...(extra ? { [extra.key]: "" } : {}) })
   }
 
   return (
@@ -160,9 +195,10 @@ function EnvarEditor({
           <Table>
             <TableHeader>
               <TableRow>
+                {showSlot ? <TableHead className="w-[70px]">Field</TableHead> : null}
                 <TableHead>English</TableHead>
                 <TableHead>繁體中文</TableHead>
-                {hasDosage ? <TableHead>Dosages</TableHead> : null}
+                {extra ? <TableHead>{extra.label}</TableHead> : null}
                 <TableHead className="w-[130px] text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -173,13 +209,18 @@ function EnvarEditor({
                     key={entry.id}
                     draft={draft}
                     setDraft={setDraft}
-                    hasDosage={hasDosage}
+                    extra={extra}
+                    showSlot={showSlot}
+                    slot={entry.id}
                     busy={save.isPending}
                     onSave={() => save.mutate(draft)}
                     onCancel={() => { setEditing(null); setError(null) }}
                   />
                 ) : (
                   <TableRow key={entry.id}>
+                    {showSlot ? (
+                      <TableCell className="tabular-nums text-muted-foreground">{entry.id}</TableCell>
+                    ) : null}
                     <TableCell className="font-medium">{entry.name_en}</TableCell>
                     <TableCell>
                       {entry.name_zh_hant?.trim() ? (
@@ -190,7 +231,7 @@ function EnvarEditor({
                         <span className="text-muted-foreground">— not translated</span>
                       )}
                     </TableCell>
-                    {hasDosage ? <TableCell className="text-muted-foreground">{entry.default_dosage}</TableCell> : null}
+                    {extra ? <TableCell className="text-muted-foreground">{entry[extra.key]}</TableCell> : null}
                     <TableCell className="text-right">
                       <Button variant="ghost" size="sm" onClick={() => startEdit(entry)} aria-label={`Edit ${entry.name_en}`}>
                         <Pencil className="h-4 w-4" />
@@ -213,7 +254,12 @@ function EnvarEditor({
                 <EditRow
                   draft={draft}
                   setDraft={setDraft}
-                  hasDosage={hasDosage}
+                  extra={extra}
+                  showSlot={showSlot}
+                  // Nothing to show yet: the server picks the lowest free slot
+                  // when the row is inserted, and guessing it here would be a
+                  // number the editor invented.
+                  slot={null}
                   busy={save.isPending}
                   onSave={() => save.mutate(draft)}
                   onCancel={() => { setEditing(null); setError(null) }}
@@ -235,17 +281,25 @@ function EnvarEditor({
 }
 
 function EditRow({
-  draft, setDraft, hasDosage, busy, onSave, onCancel,
+  draft, setDraft, extra, showSlot, slot, busy, onSave, onCancel,
 }: {
   draft: SaveVocabularyEntryRequest
   setDraft: (d: SaveVocabularyEntryRequest) => void
-  hasDosage: boolean
+  extra?: ExtraColumn
+  showSlot: boolean
+  /** null while adding: the server picks the slot, so the editor cannot show one yet. */
+  slot: number | null
   busy: boolean
   onSave: () => void
   onCancel: () => void
 }) {
   return (
     <TableRow>
+      {showSlot ? (
+        <TableCell className="tabular-nums text-muted-foreground">
+          {slot ?? <span title="Assigned when you save">—</span>}
+        </TableCell>
+      ) : null}
       <TableCell>
         <Label className="sr-only" htmlFor="name_en">English name</Label>
         <Input
@@ -265,12 +319,14 @@ function EditRow({
           onChange={(e) => setDraft({ ...draft, name_zh_hant: e.target.value || null })}
         />
       </TableCell>
-      {hasDosage ? (
+      {extra ? (
         <TableCell>
+          <Label className="sr-only" htmlFor={extra.key}>{extra.label}</Label>
           <Input
-            value={draft.default_dosage ?? ""}
-            placeholder="e.g. 200mg, 500mg"
-            onChange={(e) => setDraft({ ...draft, default_dosage: e.target.value })}
+            id={extra.key}
+            value={draft[extra.key] ?? ""}
+            placeholder={extra.placeholder}
+            onChange={(e) => setDraft({ ...draft, [extra.key]: e.target.value })}
           />
         </TableCell>
       ) : null}
