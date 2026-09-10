@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { AlertTriangle, CheckCircle2, Clock, Radio, Send, Users, XCircle } from "lucide-react"
+import { AlertTriangle, CheckCircle2, Clock, MessagesSquare, Radio, Send, User, Users, XCircle } from "lucide-react"
 import { useState } from "react"
 
 import { Badge } from "@/components/ui/badge"
@@ -47,6 +47,27 @@ const KINDS: {
   { kind: "narrowcast", label: "Narrowcast", targeting: "audience", hint: "Targets an audience object. Asynchronous — a 202 means accepted, not delivered, and LINE enforces a minimum audience size." },
   { kind: "broadcast", label: "Broadcast", targeting: "none", hint: "Every follower of the account. No undo, no recipient list to review.", danger: true },
 ]
+
+/**
+ * The three kinds of conversation LINE can put the bot in, and how each is
+ * presented.
+ *
+ * **`linkable` is the load-bearing field.** A user can be bound to a TISH
+ * account by redeeming a code; a group or room **cannot be, ever** — a group has
+ * no single owner, so `user_id` stays null by design rather than by omission.
+ * Showing "not linked with app" against one would claim something is missing and
+ * fixable when it is structurally impossible.
+ */
+const SOURCE_TYPES = [
+  { type: "user", heading: "Friends", icon: User, linkable: true, empty: "Nobody has messaged the bot yet." },
+  { type: "group", heading: "Groups", icon: Users, linkable: false, empty: null },
+  { type: "room", heading: "Rooms", icon: MessagesSquare, linkable: false, empty: null },
+] as const
+
+/** The icon for a row, so the composer and the list agree on what a type looks like. */
+function iconFor(sourceType: string) {
+  return SOURCE_TYPES.find((s) => s.type === sourceType)?.icon ?? User
+}
 
 const STATUS: Record<LineMessageRow["status"], { icon: typeof CheckCircle2; tone: string; label: string }> = {
   sent: { icon: CheckCircle2, tone: "text-muted-foreground", label: "Sent" },
@@ -193,19 +214,25 @@ export function LinePage() {
               {/* Real addressees, so nobody has to paste an opaque id out of a log. */}
               {recipients.data?.recipients.length ? (
                 <div className="flex flex-wrap gap-1 pt-1">
-                  {recipients.data.recipients.slice(0, 8).map((r) => (
-                    <Button
-                      key={r.line_user_id}
-                      type="button"
-                      size="sm"
-                      variant="ghost"
-                      className="h-6 text-xs"
-                      onClick={() => setTo(r.line_user_id)}
-                    >
-                      <Users className="mr-1 h-3 w-3" />
-                      {r.full_name ?? r.display_name ?? r.line_user_id.slice(0, 10)}
-                    </Button>
-                  ))}
+                  {recipients.data.recipients.slice(0, 8).map((r) => {
+                    // Same icon as the list below, so a groupId is recognisable
+                    // as one here — multicast rejects groups, and an id that
+                    // looks like any other is how that mistake gets made.
+                    const RowIcon = iconFor(r.source_type)
+                    return (
+                      <Button
+                        key={r.line_user_id}
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 text-xs"
+                        onClick={() => setTo(r.line_user_id)}
+                      >
+                        <RowIcon className="mr-1 h-3 w-3" />
+                        {r.full_name ?? r.display_name ?? r.line_user_id.slice(0, 10)}
+                      </Button>
+                    )
+                  })}
                 </div>
               ) : null}
             </div>
@@ -313,37 +340,42 @@ export function LinePage() {
               Nobody yet. Send the bot a message from LINE and it will appear here.
             </p>
           ) : (
-            <div className="space-y-4">
-              {(["user", "group", "room"] as const).map((type) => {
+            <div className="space-y-5">
+              {SOURCE_TYPES.map(({ type, heading, icon: TypeIcon, linkable }) => {
                 const rows = recipients.data.recipients.filter((r) => r.source_type === type)
                 if (!rows.length) return null
-                const heading = type === "user" ? "Friends" : type === "group" ? "Groups" : "Rooms"
                 return (
                   <div key={type}>
-                    <p className="mb-1 text-xs font-medium uppercase text-muted-foreground">
+                    <p className="mb-2 flex items-center gap-1.5 text-xs font-medium uppercase text-muted-foreground">
+                      <TypeIcon className="h-3.5 w-3.5" />
                       {heading} ({rows.length})
                     </p>
                     <div className="divide-y">
                       {rows.map((r) => (
-                        <div key={r.line_user_id} className="flex items-start justify-between gap-3 py-2 text-sm">
+                        <div key={r.line_user_id} className="flex items-start gap-3 py-2 text-sm">
+                          <TypeIcon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" />
                           <div className="min-w-0 flex-1">
                             <div className="flex flex-wrap items-center gap-2">
                               <span className="font-medium">
                                 {r.full_name ?? r.display_name ?? "Unnamed"}
                               </span>
+                              {/* **Only users carry a link badge.** A group has no
+                                  single owner, so its null user_id is by design —
+                                  labelling it "not linked" would report a missing
+                                  step that does not exist. */}
                               {r.user_id ? (
                                 <Badge variant="outline" className="text-xs">
                                   TISH #{r.user_id}{r.locale ? ` · ${r.locale}` : ""}
                                 </Badge>
-                              ) : (
-                                // Worth calling out rather than leaving blank: an
-                                // unlinked follower cannot be reached by any
-                                // product event, only by a manual push here.
-                                <Badge variant="secondary" className="text-xs">not linked</Badge>
-                              )}
+                              ) : linkable ? (
+                                // An unlinked friend cannot be reached by any
+                                // product event — no escalation, no reminder — only
+                                // by a manual push from this page. Worth saying.
+                                <Badge variant="secondary" className="text-xs">not linked with app</Badge>
+                              ) : null}
                               {r.unfollowed_at ? (
                                 <Badge variant="destructive" className="text-xs">
-                                  {type === "user" ? "blocked" : "left"}
+                                  {linkable ? "blocked" : "left"}
                                 </Badge>
                               ) : null}
                             </div>

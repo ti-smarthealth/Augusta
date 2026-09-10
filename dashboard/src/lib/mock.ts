@@ -438,6 +438,9 @@ export const mockApi = {
         { line_user_id: "U2222", source_type: "user", display_name: "Chen", user_id: null, full_name: null, locale: null, unfollowed_at: null, linked_at: new Date(Date.now() - 172800000).toISOString(), message_count: 0 },
         { line_user_id: "U4444", source_type: "user", display_name: null, user_id: null, full_name: null, locale: null, unfollowed_at: new Date(Date.now() - 3600000).toISOString(), linked_at: new Date(Date.now() - 604800000).toISOString(), message_count: 1 },
         { line_user_id: "C3333", source_type: "group", display_name: "Family", user_id: null, full_name: null, locale: null, unfollowed_at: null, linked_at: new Date(Date.now() - 259200000).toISOString(), message_count: 2 },
+        // A room, so the third section and its icon are exercised too — and
+        // rooms have no name endpoint on LINE at all, hence the null.
+        { line_user_id: "R5555", source_type: "room", display_name: null, user_id: null, full_name: null, locale: null, unfollowed_at: null, linked_at: new Date(Date.now() - 43200000).toISOString(), message_count: 0 },
       ],
     }
   },
