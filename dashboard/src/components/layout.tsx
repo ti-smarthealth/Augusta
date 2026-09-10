@@ -1,4 +1,4 @@
-import { Activity, ChartNoAxesCombined, Database, HeartPulse, Languages, LogOut, Newspaper, Tags } from "lucide-react"
+import { Activity, ChartNoAxesCombined, Database, HeartPulse, Languages, LogOut, MessageCircle, Newspaper, Tags } from "lucide-react"
 import { NavLink, Outlet } from "react-router-dom"
 
 import { Badge } from "@/components/ui/badge"
@@ -18,6 +18,9 @@ const NAV_ITEMS = [
   { to: "/analytics", label: "Analytics", icon: ChartNoAxesCombined },
   { to: "/database", label: "Database", icon: Database },
   { to: "/health", label: "Health", icon: HeartPulse },
+  // Development console rather than an operator tool, so it sits last —
+  // below the pages somebody opens to answer a question about the product.
+  { to: "/line", label: "LINE bot", icon: MessageCircle },
 ]
 
 export function Layout() {
@@ -26,10 +29,12 @@ export function Layout() {
   return (
     <div className="flex min-h-screen">
       <aside className="flex w-56 flex-col border-r bg-muted/30 p-4">
-        {/* The sidebar is 224px wide, so this is the short form. The full name
-            is spelled out wherever there is room for it — the sign-in and
-            sign-up screens. */}
-        <div className="mb-1 px-2 text-lg font-bold tracking-tight">TISH Admin</div>
+        {/* The sidebar is 224px wide, which is why this used to read "TISH
+            Admin". The full name does not fit on one line at this size, so it
+            is stacked rather than abbreviated — the acronym still appears in
+            body copy, but the chrome now names the product properly. */}
+        <div className="mb-0 px-2 text-lg font-bold leading-tight tracking-tight">Titanium Initium</div>
+        <div className="mb-1 px-2 text-xs text-muted-foreground">Smart Healthcare · Admin</div>
         <div className="mb-4 px-2">
           {MOCK && <Badge variant="secondary">mock data</Badge>}
         </div>
