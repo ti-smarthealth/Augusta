@@ -1,0 +1,9 @@
+# Installed per-package at deploy time, and by CI before it zips. Mirrors
+# telemetry/.gitignore — each function here has its own package.json precisely
+# so its dependency set stays separate, and committing the installed trees would
+# undo that by putting `pg` in the repository next to a webhook that must never
+# have a database client.
+node_modules/
+
+# Build artefacts from a hand-run deploy.
+*.zip

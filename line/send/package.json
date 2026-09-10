@@ -1,0 +1,13 @@
+{
+  "name": "tish-line-send",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Every outbound call to api.line.me. Not VPC-attached, and deliberately has no database client — it logs by invoking tish-line-db.",
+  "scripts": {
+    "test": "node --test"
+  },
+  "devDependencies": {
+    "@aws-sdk/client-lambda": "^3.1100.0"
+  }
+}

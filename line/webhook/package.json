@@ -1,0 +1,13 @@
+{
+  "name": "tish-line-webhook",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "LINE Messaging API webhook receiver. Deliberately has no database client — it is not VPC-attached and cannot reach RDS.",
+  "scripts": {
+    "test": "node --test"
+  },
+  "devDependencies": {
+    "@aws-sdk/client-lambda": "^3.1100.0"
+  }
+}

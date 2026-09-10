@@ -1,0 +1,13 @@
+{
+  "name": "tish-line-db",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "VPC-attached half of the LINE bot. Owns every write in migration 017; cannot reach the internet.",
+  "scripts": {
+    "test": "node --test"
+  },
+  "dependencies": {
+    "pg": "^8.16.0"
+  }
+}

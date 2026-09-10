@@ -387,6 +387,84 @@ const TABLE_DEFINITIONS = [
     );
 
     CREATE INDEX push_tickets_unchecked_idx ON push_tickets (created_at) WHERE checked_at IS NULL;` },
+
+    // --- LINE bot (migration 017) -------------------------------------------
+    //
+    // Mirrored here so a `/reset-db` rebuilds them. None are in D-11's preserved
+    // set: a binding costs one exchange to recreate, and the log and the dedupe
+    // table are both disposable history rather than record.
+    { name: 'line_accounts', create: `CREATE TABLE line_accounts (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+        -- UNIQUE on the LINE id alone, not on (user_id, line_user_id) — the same
+        -- rule as push_tokens 2.5. One LINE account is one person, and letting
+        -- it appear against two users would make a message from it
+        -- unattributable.
+        line_user_id TEXT NOT NULL UNIQUE,
+        source_type TEXT NOT NULL DEFAULT 'user' CHECK (source_type IN ('user', 'group', 'room')),
+        display_name TEXT,
+        linked_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        -- Soft, so blocking the bot and unblocking it does not cost the link.
+        unfollowed_at TIMESTAMPTZ
+    );
+
+    CREATE INDEX line_accounts_user_idx ON line_accounts (user_id) WHERE user_id IS NOT NULL;` },
+
+    // The entire security model for linking: short-lived, single-use, unique.
+    // The code is typed into a chat window, so it is a bearer token.
+    { name: 'line_link_codes', create: `CREATE TABLE line_link_codes (
+        code TEXT PRIMARY KEY,
+        user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        used_at TIMESTAMPTZ
+    );
+
+    CREATE INDEX line_link_codes_user_idx ON line_link_codes (user_id);` },
+
+    // LINE retries deliveries, so the primary key does the deduping and the
+    // handler simply lets the conflict happen.
+    { name: 'line_events', create: `CREATE TABLE line_events (
+        webhook_event_id TEXT PRIMARY KEY,
+        event_type TEXT,
+        line_user_id TEXT,
+        received_at TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    CREATE INDEX line_events_received_idx ON line_events (received_at);` },
+
+    // Records attempts rather than successes: a row written only on success
+    // cannot distinguish "nothing happened" from "it failed silently", which is
+    // the pair this feature exists to tell apart.
+    { name: 'line_messages', create: `CREATE TABLE line_messages (
+        id SERIAL PRIMARY KEY,
+        kind TEXT NOT NULL,
+        target TEXT,
+        payload TEXT,
+        status TEXT NOT NULL DEFAULT 'queued' CHECK (status IN ('queued', 'sent', 'failed')),
+        line_request_id TEXT,
+        error TEXT,
+        triggered_by TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        sent_at TIMESTAMPTZ
+    );
+
+    CREATE INDEX line_messages_created_idx ON line_messages (created_at DESC);` },
+
+    // The same outbox as 5.9's, for the same forced reason: a product event
+    // raised inside the VPC cannot reach api.line.me, so it is queued for the
+    // function that can.
+    { name: 'line_outbox', create: `CREATE TABLE line_outbox (
+        id SERIAL PRIMARY KEY,
+        kind TEXT NOT NULL,
+        target TEXT,
+        payload TEXT,
+        reason TEXT,
+        created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+        sent_at TIMESTAMPTZ,
+        attempts INTEGER NOT NULL DEFAULT 0
+    );
+
+    CREATE INDEX line_outbox_pending_idx ON line_outbox (created_at) WHERE sent_at IS NULL;` },
 ];
 
 // --- 5.1 policy constants ---------------------------------------------------
