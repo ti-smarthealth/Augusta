@@ -40,10 +40,23 @@ const KINDS: {
   targeting: "token" | "one" | "many" | "none" | "audience"
   hint: string
   danger?: boolean
+  /** Present means the kind cannot be driven from here; the text says why. */
+  disabled?: string
 }[] = [
   { kind: "push", label: "Push", targeting: "one", hint: "One userId, groupId or roomId. Costs quota." },
   { kind: "multicast", label: "Multicast", targeting: "many", hint: "Up to 500 userIds, comma separated. Individuals only — a groupId here is a 400." },
-  { kind: "reply", label: "Reply", targeting: "token", hint: "Needs a replyToken from a recent inbound event. Free, and the token expires fast." },
+  {
+    kind: "reply",
+    label: "Reply",
+    targeting: "token",
+    hint: "Replies are how the bot answers inbound messages, and they cost no quota — but they cannot be driven by hand from here.",
+    // **Not hidden, because the capability is real and worth documenting.** The
+    // bot replies constantly; what is impossible is doing it from a console.
+    disabled:
+      "A reply token exists only inside an inbound webhook event, is single-use, " +
+      "and expires in about a minute. The webhook has already spent it answering " +
+      "the message, so there is never a live token to paste here.",
+  },
   { kind: "narrowcast", label: "Narrowcast", targeting: "audience", hint: "Targets an audience object. Asynchronous — a 202 means accepted, not delivered, and LINE enforces a minimum audience size." },
   { kind: "broadcast", label: "Broadcast", targeting: "none", hint: "Every follower of the account. No undo, no recipient list to review.", danger: true },
 ]
@@ -192,16 +205,22 @@ export function LinePage() {
         <CardContent className="space-y-4">
           <div className="flex flex-wrap gap-2">
             {KINDS.map((k) => (
-              <Button
-                key={k.kind}
-                type="button"
-                size="sm"
-                variant={kind === k.kind ? "default" : "outline"}
-                onClick={() => { setKind(k.kind); setResult(null) }}
-              >
-                {k.kind === "broadcast" ? <Radio className="mr-1 h-3 w-3" /> : null}
-                {k.label}
-              </Button>
+              // The span carries the tooltip: a disabled button does not fire
+              // mouse events in every browser, so a `title` on it alone would
+              // silently show nothing in some of them — which for an explanation
+              // of *why* something is disabled is the whole point lost.
+              <span key={k.kind} title={k.disabled ?? undefined} className={k.disabled ? "cursor-not-allowed" : undefined}>
+                <Button
+                  type="button"
+                  size="sm"
+                  disabled={Boolean(k.disabled)}
+                  variant={kind === k.kind ? "default" : "outline"}
+                  onClick={() => { setKind(k.kind); setResult(null) }}
+                >
+                  {k.kind === "broadcast" ? <Radio className="mr-1 h-3 w-3" /> : null}
+                  {k.label}
+                </Button>
+              </span>
             ))}
           </div>
 

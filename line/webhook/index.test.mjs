@@ -139,14 +139,40 @@ test('a duplicate delivery is ignored rather than replayed', async () => {
     assert.deepEqual(calls.map((c) => c.op), ['seen'], 'a duplicate stops at the dedupe check');
 });
 
-test('a follow records the account', async () => {
+test('a follow records the account and greets them', async () => {
     const s = install();
     const body = JSON.stringify({
-        events: [{ type: 'follow', webhookEventId: 'evt-2', source: { userId: 'U2', type: 'user' } }],
+        events: [{ type: 'follow', webhookEventId: 'evt-2', replyToken: 'rt-f', source: { userId: 'U2', type: 'user' } }],
     });
     await handler(req(body));
     const follow = s.calls.find((c) => c.op === 'follow');
     assert.equal(follow.lineUserId, 'U2');
+
+    // Adding the bot and hearing nothing is indistinguishable from adding a
+    // broken bot, which is the failure this product avoids everywhere else.
+    const sent = s.calls.find((c) => c.op === 'reply');
+    assert.equal(sent.messages, copyFor(null).greeting);
+    assert.equal(sent.to, 'U2', 'the greeting is attributed in the log like any other send');
+});
+
+test('joining a group greets the group, not the person who added it', async () => {
+    const s = install();
+    const body = JSON.stringify({
+        events: [{ type: 'join', webhookEventId: 'evt-j', replyToken: 'rt-j', source: { groupId: 'C1', type: 'group' } }],
+    });
+    await handler(req(body));
+    const sent = s.calls.find((c) => c.op === 'reply');
+    assert.equal(sent.messages, copyFor(null).greetingGroup);
+    assert.equal(sent.to, 'C1');
+});
+
+test('every locale carries a greeting for both a person and a group', () => {
+    for (const locale of ['zh-Hant', 'en']) {
+        assert.ok(copyFor(locale).greeting.length > 0, `${locale}.greeting`);
+        assert.ok(copyFor(locale).greetingGroup.length > 0, `${locale}.greetingGroup`);
+    }
+    // A group has no locale of its own, so its greeting must exist on the default.
+    assert.notEqual(copyFor(null).greetingGroup, copyFor('en').greetingGroup);
 });
 
 test('a valid link code binds the account and confirms in the user own language', async () => {

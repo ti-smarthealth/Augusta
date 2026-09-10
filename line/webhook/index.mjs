@@ -46,11 +46,15 @@ const SECRET = process.env.LINE_CHANNEL_SECRET;
  */
 const MESSAGES = {
     'zh-Hant': {
+        greeting: '歡迎使用 TISH 用藥提醒。這個帳號還在測試中，目前尚無法回答問題。',
+        greetingGroup: '已加入這個群組。這個帳號還在測試中，目前尚無法回答問題。',
         linked: '您的 LINE 帳號已成功連結至 TISH。',
         badCode: '這組代碼無效或已過期。請在 TISH 應用程式中重新產生一組。',
         holding: '已收到您的訊息。目前還無法回答問題。',
     },
     en: {
+        greeting: 'Welcome to TISH medication reminders. This account is still in testing and cannot answer questions yet.',
+        greetingGroup: 'Added to this group. This account is still in testing and cannot answer questions yet.',
         linked: 'Your LINE account is now linked to TISH.',
         badCode: 'That code is not valid, or it has expired. You can generate a new one in the TISH app.',
         holding: 'Thanks — I have received your message. I cannot answer questions yet.',
@@ -232,21 +236,36 @@ async function handleEvent(e) {
     }
 
     switch (e.type) {
-        case 'follow':
+        case 'follow': {
             await invokeDb({
                 op: 'follow', lineUserId, sourceType,
                 displayName: await resolveName(lineUserId, 'user'),
             });
+            // **Say something.** Adding the bot and hearing nothing back is
+            // indistinguishable from adding a broken bot, which is the failure
+            // this product works hardest to avoid everywhere else. A follow
+            // event carries a replyToken, and replies cost no quota.
+            //
+            // The locale lookup is not wasted on a first-time follower: somebody
+            // who linked, blocked the bot, and later unblocked it comes back
+            // through this path with a locale already on file.
+            await reply(e.replyToken, copyFor(await localeOf(lineUserId)).greeting, lineUserId);
             return;
+        }
 
-        case 'join':
+        case 'join': {
             // Added to a group. Recorded under the group id, with no owner —
             // a group is not a person and cannot be bound to one.
             await invokeDb({
                 op: 'follow', lineUserId: groupId, sourceType,
                 displayName: await resolveName(groupId, sourceType),
             });
+            // A group has no locale of its own — there is no single person to
+            // ask — so this is the product default by definition, not by
+            // fallback.
+            await reply(e.replyToken, copyFor(null).greetingGroup, groupId);
             return;
+        }
 
         case 'unfollow':
         case 'leave':
@@ -281,6 +300,25 @@ async function handleEvent(e) {
  * only chance to learn they exist. Doing the lookup here means they arrive in
  * the console named rather than as a raw id.
  */
+/**
+ * What language to answer this sender in, or null if nobody is behind the id.
+ *
+ * Null is a real answer rather than a failure — `copyFor` turns it into the
+ * product's default, which is what an unlinked sender should get. A lookup that
+ * throws degrades to the same place: losing the language is a cosmetic loss,
+ * losing the reply is a bot that looks broken to somebody who just messaged it.
+ */
+async function localeOf(lineUserId) {
+    if (!lineUserId) return null;
+    try {
+        const { locale = null } = await invokeDb({ op: 'sender', lineUserId });
+        return locale;
+    } catch (err) {
+        console.error('[line] could not resolve sender locale', err);
+        return null;
+    }
+}
+
 async function backfillName(lineUserId, sourceType) {
     if (sourceType !== 'user') return;
     try {
@@ -316,15 +354,7 @@ async function handleMessage(e, lineUserId, sourceType, groupId) {
 
     // Whose language to answer in. Null for anyone not yet linked, which
     // `copyFor` turns into the product's default rather than into English.
-    let locale = null;
-    if (lineUserId) {
-        try {
-            ({ locale = null } = await invokeDb({ op: 'sender', lineUserId }));
-        } catch (err) {
-            // A locale lookup failing must not cost the user their reply.
-            console.error('[line] could not resolve sender locale', err);
-        }
-    }
+    const locale = await localeOf(lineUserId);
 
     // A link code is 6 characters, letters and digits. Checked before anything
     // conversational so a code is never treated as chat.
