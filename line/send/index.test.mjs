@@ -144,5 +144,19 @@ test('the logged target reflects how each kind addresses people', () => {
     assert.equal(targetFor('push', { to: 'U1' }), 'U1');
     assert.equal(targetFor('multicast', { to: ['U1', 'U2'] }), 'U1,U2');
     assert.equal(targetFor('broadcast', {}), null, 'broadcast has no addressee by definition');
+});
+
+test('a reply logs who it answered, never the token', () => {
+    // The token is single-use and expires in about a minute, so storing it would
+    // persist a credential that is dead before anyone reads it. What the log is
+    // for is *which conversation* — so a reply reads like a push.
+    assert.equal(targetFor('reply', { replyToken: 'rt-secret', to: 'U1' }), 'U1');
+    assert.notEqual(targetFor('reply', { replyToken: 'rt-secret', to: 'U1' }), 'rt-secret');
+});
+
+test('a reply with no recipient falls back rather than logging blank', () => {
+    // Means the conversation is unrecoverable, not that the reply was anonymous —
+    // a distinction worth keeping visible in the log.
     assert.equal(targetFor('reply', { replyToken: 'rt' }), 'reply-token');
+    assert.equal(targetFor('reply', {}), null);
 });

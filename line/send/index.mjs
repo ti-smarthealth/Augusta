@@ -164,7 +164,15 @@ export const handler = async (event = {}) => {
 /** What to record as the addressee, given how this kind addresses people. */
 export function targetFor(kind, event) {
     switch (TARGETING[kind]) {
-        case 'token': return event.replyToken ? 'reply-token' : null;
+        // **Never the token itself.** A reply token is single-use and expires in
+        // about a minute, so a stored one is a dead credential by the time
+        // anybody reads the log — all risk, no value.
+        //
+        // What the log actually wants is *who was replied to*, which the caller
+        // passes as `to`. `reply-token` is the fallback for a caller that did
+        // not, and a row reading that means the conversation is unrecoverable
+        // rather than that the reply was anonymous.
+        case 'token': return event.to ?? (event.replyToken ? 'reply-token' : null);
         case 'one': return event.to ?? null;
         case 'many': return Array.isArray(event.to) ? event.to.join(',') : (event.to ?? null);
         case 'audience': return event.recipient ? JSON.stringify(event.recipient).slice(0, 200) : 'all';

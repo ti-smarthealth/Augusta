@@ -335,11 +335,11 @@ async function handleMessage(e, lineUserId, sourceType, groupId) {
         // known**, so the confirmation uses the locale the link just revealed
         // rather than the null we started with.
         const copy = copyFor(res.linked ? (res.locale ?? locale) : locale);
-        await reply(e.replyToken, res.linked ? copy.linked : copy.badCode);
+        await reply(e.replyToken, res.linked ? copy.linked : copy.badCode, lineUserId);
         return;
     }
 
-    await reply(e.replyToken, copyFor(locale).holding);
+    await reply(e.replyToken, copyFor(locale).holding, id);
 }
 
 /**
@@ -349,10 +349,13 @@ async function handleMessage(e, lineUserId, sourceType, groupId) {
  * lands in `line_messages` whatever produced it, so the console shows the whole
  * picture rather than only the sends somebody pressed a button for.
  */
-async function reply(replyToken, text) {
+async function reply(replyToken, text, to = null) {
     if (!replyToken) return;
     try {
-        await invokeSend({ op: 'reply', replyToken, messages: text, triggeredBy: 'webhook' });
+        // `to` is for the log only — the reply is addressed by the token. Without
+        // it every reply row reads `reply-token` and the console cannot say which
+        // conversation it belonged to, which is the one thing that column is for.
+        await invokeSend({ op: 'reply', replyToken, to, messages: text, triggeredBy: 'webhook' });
     } catch (err) {
         console.error('[line] reply failed', err);
     }
