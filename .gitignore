@@ -15,3 +15,12 @@
 .env
 .env.*
 !.env.example
+
+# LINE bot credentials. `line_test.py` carries a hardcoded channel token as a
+# default argument and `line_jyw.py` / `line bot.txt` hold RSA private keys for
+# the v2.1 JWT flow — a `git add -A` would publish all three. The real values
+# belong in Lambda environment variables; see line/README.md.
+line_test.py
+line_jyw.py
+line bot.txt
+py/
