@@ -211,8 +211,10 @@ Run manually with `npm test` in the relevant folder.
   `dashboard/AWS-SETUP.md` for the admin side's identifiers, `line/README.md`
   for the three that are not in CI, and `MIGRATION.md` for the region inventory.
 - If a repo is renamed on GitHub, update the `repo:...` entries in the trust
-  policy — the old name stops matching immediately. (The live trust policy is
-  currently broader than the one shown above; see the Known gaps section of
-  `dashboard/AWS-SETUP.md`.)
+  policy — the old name stops matching immediately. The live policy matches
+  what is printed above, verified 2026-09-10; note that both patterns are
+  org-wide wildcards on any ref, which `dashboard/AWS-SETUP.md` carries as an
+  open least-privilege item rather than a mistake to fix in passing.
 - Regions are per-target, not per-repo: `AWS_REGION` covers the Lambdas and
-  `AMPLIFY_REGION` the dashboard. IAM roles are global, so one role spans both.
+  `AMPLIFY_REGION` both Amplify apps — the patient web build reads the same
+  variable. IAM roles are global, so one role spans both regions.
