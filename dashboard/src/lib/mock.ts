@@ -5,6 +5,11 @@
 import enFixture from "@/fixtures/en.json"
 import zhHantFixture from "@/fixtures/zh-Hant.json"
 import type {
+  LineStatusResponse,
+  LineRecipientsResponse,
+  LineLogResponse,
+  LineResult,
+  SendLineRequest,
   AdherenceDay,
   AdherencePatient,
   AdherencePatientListResponse,
@@ -402,6 +407,63 @@ export const mockApi = {
       mockMetabase.since = settled === "running" ? new Date().toISOString() : null
     }, 6000)
     return { state: mockMetabase.state, changed: true }
+  },
+
+  // --- LINE bot console ----------------------------------------------------
+  //
+  // **The mock deliberately includes a failed send and a stuck row.** A fixture
+  // where everything succeeded would let the console's most important states —
+  // LINE refusing something, and a send that never came back — go unexercised
+  // until they happened in production.
+
+  async getLineStatus(): Promise<LineStatusResponse> {
+    await delay(250)
+    return {
+      // The real channel's own values, so the fixture cannot quietly disagree
+      // with what the console shows against production.
+      info: { ok: true, data: { userId: "Ubot0000", basicId: "@025gtozl", displayName: "Titanium Initium" } },
+      quota: { ok: true, data: { quota: { type: "limited", value: 500 }, consumption: { totalUsage: 37 } } },
+      audiences: { ok: true, data: { audienceGroups: [] } },
+    }
+  },
+
+  async getLineRecipients(): Promise<LineRecipientsResponse> {
+    await delay(250)
+    return {
+      // Covers the states the panel has to render distinctly: linked, unlinked,
+      // blocked, and a group. A fixture where everyone was linked and active
+      // would leave three of the four unexercised until they appeared live.
+      recipients: [
+        { line_user_id: "U1111", source_type: "user", display_name: "Wang", user_id: 2, full_name: "Wang Mei-ling", locale: "zh-Hant", unfollowed_at: null, linked_at: new Date(Date.now() - 86400000).toISOString(), message_count: 4 },
+        { line_user_id: "U2222", source_type: "user", display_name: "Chen", user_id: null, full_name: null, locale: null, unfollowed_at: null, linked_at: new Date(Date.now() - 172800000).toISOString(), message_count: 0 },
+        { line_user_id: "U4444", source_type: "user", display_name: null, user_id: null, full_name: null, locale: null, unfollowed_at: new Date(Date.now() - 3600000).toISOString(), linked_at: new Date(Date.now() - 604800000).toISOString(), message_count: 1 },
+        { line_user_id: "C3333", source_type: "group", display_name: "Family", user_id: null, full_name: null, locale: null, unfollowed_at: null, linked_at: new Date(Date.now() - 259200000).toISOString(), message_count: 2 },
+      ],
+    }
+  },
+
+  async getLineLog(): Promise<LineLogResponse> {
+    await delay(250)
+    const now = Date.now()
+    return {
+      messages: [
+        { id: 3, kind: "push", target: "U1111", payload: "Your LINE account is now linked to TISH.", status: "sent", line_request_id: "req-aaa", error: null, triggered_by: "webhook", created_at: new Date(now - 60000).toISOString(), sent_at: new Date(now - 59000).toISOString() },
+        { id: 2, kind: "push", target: "U9999", payload: "Test", status: "failed", line_request_id: "req-bbb", error: 'line-http-400: {"message":"The user hasn\'t added the LINE Official Account as a friend"}', triggered_by: "admin@ti-smarthealth.com", created_at: new Date(now - 600000).toISOString(), sent_at: null },
+        { id: 1, kind: "multicast", target: "U1111,U2222", payload: "Reminder", status: "queued", line_request_id: null, error: null, triggered_by: "admin@ti-smarthealth.com", created_at: new Date(now - 1800000).toISOString(), sent_at: null },
+      ],
+      pending: [
+        { id: 1, kind: "push", target: "U2222", reason: "dose-escalation", attempts: 1, created_at: new Date(now - 120000).toISOString() },
+      ],
+      stuckCount: 1,
+    }
+  },
+
+  async sendLineMessage(req: SendLineRequest): Promise<LineResult> {
+    await delay(500)
+    if (req.kind === "broadcast" && req.confirm !== "BROADCAST") {
+      return { ok: false, error: "A broadcast reaches every follower and cannot be undone." }
+    }
+    return { ok: true, status: 200, requestId: `req-${Math.random().toString(36).slice(2, 8)}` }
   },
 
   async getDailyOpens(range: { from: string; to: string }): Promise<DailyOpensResponse> {

@@ -9,6 +9,7 @@ import { AdherencePage } from "@/features/adherence/AdherencePage"
 import { AnalyticsPage } from "@/features/analytics/AnalyticsPage"
 import { DatabasePage } from "@/features/database/DatabasePage"
 import { HealthPage } from "@/features/health/HealthPage"
+import { LinePage } from "@/features/line/LinePage"
 import { NewsPage } from "@/features/news/NewsPage"
 import { EnvarsPage } from "@/features/envars/EnvarsPage"
 import { TranslationsPage } from "@/features/translations/TranslationsPage"
@@ -121,6 +122,7 @@ export default function App() {
         <Route path="/adherence" element={<AdherencePage />} />
         <Route path="/analytics" element={<AnalyticsPage />} />
         <Route path="/health" element={<HealthPage />} />
+        <Route path="/line" element={<LinePage />} />
         <Route path="*" element={<Navigate to="/news" replace />} />
       </Route>
     </Routes>

@@ -17,6 +17,11 @@ import type {
   CrashesResponse,
   DailyOpensResponse,
   MetabasePowerResult,
+  LineStatusResponse,
+  LineLogResponse,
+  LineRecipientsResponse,
+  LineResult,
+  SendLineRequest,
   MetabaseStatus,
   SaveAnnouncementRequest,
   SaveAnnouncementTypeRequest,
@@ -80,6 +85,10 @@ type Api = {
   getCrashes: () => Promise<CrashesResponse>
   getMetabaseStatus: () => Promise<MetabaseStatus>
   setMetabasePower: (action: "start" | "stop") => Promise<MetabasePowerResult>
+  getLineStatus: () => Promise<LineStatusResponse>
+  getLineLog: () => Promise<LineLogResponse>
+  getLineRecipients: () => Promise<LineRecipientsResponse>
+  sendLineMessage: (req: SendLineRequest) => Promise<LineResult>
 }
 
 function useRealApi(): Api {
@@ -148,6 +157,11 @@ function useRealApi(): Api {
         method: "POST",
         body: JSON.stringify({ action }),
       }),
+    getLineStatus: () => request<LineStatusResponse>(token, "/line/status"),
+    getLineLog: () => request<LineLogResponse>(token, "/line/log"),
+    getLineRecipients: () => request<LineRecipientsResponse>(token, "/line/recipients"),
+    sendLineMessage: (req) =>
+      request<LineResult>(token, "/line/send", { method: "POST", body: JSON.stringify(req) }),
   }
 }
 

@@ -87,6 +87,20 @@ export function requiredEnvFor(routeName) {
     // its own beyond the permission on the execution role.
     case 'getAlarms':
       return ['ALLOWED_ORIGIN'];
+    // **The LINE console never holds the channel token.** These routes name the
+    // send function and invoke it; the credential stays on `tish-line-send`,
+    // which is the only place that talks to api.line.me. That is not tidiness —
+    // it is what makes the console's test buttons exercise the same code path a
+    // real escalation takes, rather than a parallel implementation that can
+    // drift and pass its own tests while production is broken.
+    case 'getLineStatus':
+    case 'sendLineMessage':
+      return ['LINE_SEND_FUNCTION', 'ALLOWED_ORIGIN'];
+    // Reading the log is a database question, so it lands on the VPC half and
+    // needs the database env rather than the send function.
+    case 'getLineLog':
+    case 'getLineRecipients':
+      return [...DB_ENV, 'ALLOWED_ORIGIN'];
     default:
       return ['ALLOWED_ORIGIN'];
   }
@@ -329,6 +343,56 @@ async function setMetabasePower(action) {
   return changes[0]?.CurrentState?.Name ?? 'unknown';
 }
 
+// ---------------------------------------------------------------------------
+// LINE bot console helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Invoke `tish-line-send`.
+ *
+ * **This function never holds LINE_CHANNEL_ACCESS_TOKEN**, by design — the token
+ * lives on the send function alone, so the admin API cannot message anybody
+ * except through the code path the product uses. Same argument as the GitHub
+ * token never reaching the table function.
+ *
+ * Lazily imported so the module loads without the SDK, and declared as a
+ * devDependency rather than a dependency because the managed runtime already
+ * provides the v3 SDK.
+ */
+let invokeLineSend = async (payload) => {
+  const { LambdaClient, InvokeCommand } = await import('@aws-sdk/client-lambda');
+  const client = new LambdaClient({});
+  const res = await client.send(new InvokeCommand({
+    FunctionName: process.env.LINE_SEND_FUNCTION,
+    Payload: new TextEncoder().encode(JSON.stringify(payload)),
+  }));
+  const raw = res.Payload ? new TextDecoder().decode(res.Payload) : '';
+  if (res.FunctionError) throw new Error(`line send failed: ${raw.slice(0, 300)}`);
+  return raw ? JSON.parse(raw) : {};
+};
+export function _setLineSenderForTests(fn) { invokeLineSend = fn; }
+
+/** Request body as an object, or `{}` — a malformed body is not a crash. */
+function parseBody(event) {
+  try {
+    return JSON.parse(event?.body ?? '') ?? {};
+  } catch {
+    return {};
+  }
+}
+
+/**
+ * Who is pressing the button, for the log's `triggered_by`.
+ *
+ * Read from the authorizer's claims and never from the request body: the point
+ * of recording it is that it cannot be chosen by the caller.
+ */
+function emailOf(event) {
+  const claims = event?.requestContext?.authorizer?.claims
+    ?? event?.requestContext?.authorizer?.jwt?.claims;
+  return claims?.email ?? claims?.['cognito:username'] ?? null;
+}
+
 function getPool() {
   if (!pool) {
     pool = new pg.Pool({
@@ -550,6 +614,16 @@ export function routeOf(method, path) {
   if (method === 'GET' && clean === '/alarms') return { name: 'getAlarms' };
   if (method === 'GET' && clean === '/metabase/status') return { name: 'getMetabaseStatus' };
   if (method === 'POST' && clean === '/metabase/power') return { name: 'setMetabasePower' };
+  // The LINE bot console. **The send routes belong to the non-VPC function and
+  // the log route to the VPC one**, which is the same divide as /translations vs
+  // /tables — sending needs api.line.me, reading the log needs RDS, and no one
+  // function reaches both. Splitting them across the gateway's integrations is
+  // what keeps that true without either half carrying credentials it cannot use.
+  if (method === 'GET' && clean === '/line/status') return { name: 'getLineStatus' };
+  if (method === 'GET' && clean === '/line/log') return { name: 'getLineLog' };
+  if (method === 'GET' && clean === '/line/recipients') return { name: 'getLineRecipients' };
+  if (method === 'POST' && clean === '/line/send') return { name: 'sendLineMessage' };
+
   if (method === 'GET' && clean === '/announcement-types') return { name: 'listAnnouncementTypes' };
   if (method === 'POST' && clean === '/announcement-types') return { name: 'createAnnouncementType' };
   const typeMatch = clean.match(/^\/announcement-types\/(\d+)$/);
@@ -646,6 +720,96 @@ export async function handler(event) {
 
   try {
     switch (route.name) {
+      // --- LINE bot console ------------------------------------------------
+      //
+      // **Every send goes through `tish-line-send` rather than through fetch
+      // here.** See requiredEnvFor: the point is that the console cannot send a
+      // message by a route the product does not also use.
+      case 'getLineStatus': {
+        const [info, quota] = await Promise.all([
+          invokeLineSend({ op: 'info' }),
+          invokeLineSend({ op: 'quota' }),
+        ]);
+        // Audiences are best-effort: an account without the narrowcast plan
+        // answers with an error here, and that is information for the console
+        // rather than a reason to fail the whole status call.
+        const audiences = await invokeLineSend({ op: 'audiences' }).catch(() => ({ ok: false, data: null }));
+        return json(200, { info, quota, audiences });
+      }
+
+      case 'sendLineMessage': {
+        const body = parseBody(event);
+        const kind = String(body.kind ?? '');
+
+        // **Broadcast is guarded here as well as in the UI.** A confirmation
+        // that only exists in the browser is a confirmation an accidental
+        // scripted call skips, and this one reaches every follower of the
+        // account with no undo.
+        if (kind === 'broadcast' && body.confirm !== 'BROADCAST') {
+          return json(400, {
+            error: 'A broadcast reaches every follower and cannot be undone. Send confirm: "BROADCAST" to proceed.',
+            code: 'BROADCAST_NOT_CONFIRMED',
+          });
+        }
+
+        const result = await invokeLineSend({
+          op: kind,
+          to: body.to,
+          messages: body.messages ?? body.text,
+          replyToken: body.replyToken,
+          recipient: body.recipient,
+          filter: body.filter,
+          limit: body.limit,
+          // Attributes the row in the log to the staff member who pressed the
+          // button, which is most of the value of having a log at all.
+          triggeredBy: emailOf(event) ?? 'console',
+        });
+
+        // A LINE-level failure is a 200 carrying ok:false, not a 5xx. The
+        // console needs to render "LINE said no, and here is what it said";
+        // turning that into a server error would lose the detail.
+        return json(200, result);
+      }
+
+      case 'getLineLog': {
+        const db = getPool();
+        const limit = Math.min(Math.max(parseInt(event.queryStringParameters?.limit) || 100, 1), 200);
+        const messages = await db.query(
+          `SELECT id, kind, target, payload, status, line_request_id, error,
+                  triggered_by, created_at, sent_at
+           FROM line_messages ORDER BY created_at DESC LIMIT $1`,
+          [limit]
+        );
+        const pending = await db.query(
+          `SELECT id, kind, target, reason, attempts, created_at
+           FROM line_outbox WHERE sent_at IS NULL ORDER BY created_at ASC LIMIT 50`
+        );
+        // A row still 'queued' minutes later means the send never came back —
+        // the case a log written only on success would show as nothing at all.
+        const stuck = await db.query(
+          `SELECT count(*)::int AS n FROM line_messages
+           WHERE status = 'queued' AND created_at < now() - interval '5 minutes'`
+        );
+        return json(200, {
+          messages: messages.rows,
+          pending: pending.rows,
+          stuckCount: stuck.rows[0]?.n ?? 0,
+        });
+      }
+
+      case 'getLineRecipients': {
+        const db = getPool();
+        const res = await db.query(
+          `SELECT a.line_user_id, a.source_type, a.display_name, a.user_id,
+                  u.full_name, u.locale, a.unfollowed_at, a.linked_at,
+                  (SELECT count(*)::int FROM line_messages m WHERE m.target = a.line_user_id) AS message_count
+           FROM line_accounts a
+           LEFT JOIN users u ON u.id = a.user_id
+           ORDER BY a.linked_at DESC LIMIT 200`
+        );
+        return json(200, { recipients: res.rows });
+      }
+
       case 'listTables': {
         const db = getPool();
         const tables = [];

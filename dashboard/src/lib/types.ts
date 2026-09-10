@@ -290,3 +290,94 @@ export interface AlarmsResponse {
    */
   subscribers: number | null
 }
+
+// ---------------------------------------------------------------------------
+// LINE bot console
+// ---------------------------------------------------------------------------
+
+/**
+ * The five ways the bot can put a message in front of somebody, and how each
+ * one addresses its recipients. Mirrors `TARGETING` in `line/send/line-api.mjs`
+ * — the console renders its form from this, so a kind that takes no target
+ * cannot grow a target field by accident.
+ */
+export type LineKind = "reply" | "push" | "multicast" | "broadcast" | "narrowcast"
+
+export interface LineMessageRow {
+  id: number
+  kind: LineKind
+  target: string | null
+  payload: string | null
+  /** queued means the send was issued and never came back — not "waiting". */
+  status: "queued" | "sent" | "failed"
+  line_request_id: string | null
+  error: string | null
+  triggered_by: string | null
+  created_at: string
+  sent_at: string | null
+}
+
+export interface LinePendingRow {
+  id: number
+  kind: string
+  target: string | null
+  reason: string | null
+  attempts: number
+  created_at: string
+}
+
+export interface LineLogResponse {
+  messages: LineMessageRow[]
+  pending: LinePendingRow[]
+  /** Rows stuck at `queued` past five minutes: sends that never reported back. */
+  stuckCount: number
+}
+
+export interface LineRecipient {
+  line_user_id: string
+  source_type: "user" | "group" | "room"
+  /** From LINE's profile API. Null until the bot has seen an event from them. */
+  display_name: string | null
+  /** Non-null once they have redeemed a link code against a TISH account. */
+  user_id: number | null
+  full_name: string | null
+  locale: string | null
+  /** Soft: they blocked the bot or it left the group. The row survives. */
+  unfollowed_at: string | null
+  linked_at: string
+  message_count: number
+}
+
+export interface LineRecipientsResponse {
+  recipients: LineRecipient[]
+}
+
+/** Shape of every result the send function returns, success or failure. */
+export interface LineResult<T = unknown> {
+  ok: boolean
+  status?: number
+  requestId?: string | null
+  error?: string | null
+  data?: T | null
+}
+
+export interface LineStatusResponse {
+  info: LineResult<{ userId: string; basicId: string; displayName: string; premiumId?: string }>
+  quota: LineResult<{
+    quota: { type: string; value: number | null } | null
+    consumption: { totalUsage: number } | null
+  }>
+  audiences: LineResult<{ audienceGroups?: { audienceGroupId: number; description: string; audienceCount: number }[] }>
+}
+
+export interface SendLineRequest {
+  kind: LineKind
+  to?: string | string[]
+  text?: string
+  replyToken?: string
+  recipient?: unknown
+  filter?: unknown
+  limit?: unknown
+  /** Must be the literal "BROADCAST" for a broadcast. Guarded server-side too. */
+  confirm?: string
+}
