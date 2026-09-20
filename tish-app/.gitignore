@@ -17,6 +17,11 @@ expo-env.d.ts
 *.p12
 *.key
 *.mobileprovision
+# Play submit + FCM service account keys. They are downloaded as plain .json,
+# which nothing above catches, and they are secrets — unlike google-services.json,
+# which ships inside the app and is committed on purpose.
+google-play-service-account*.json
+firebase-service-account*.json
 
 # Metro
 .metro-health-check*

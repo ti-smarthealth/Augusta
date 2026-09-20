@@ -28,7 +28,7 @@ jobs:
     type: maestro
     environment: preview
     env:
-      MAESTRO_APP_ID: com.mcha2910.tish
+      MAESTRO_APP_ID: com.tismarthealth.mpn
     params:
       build_id: ${{ needs.build_android_for_e2e.outputs.build_id }}
       flow_path: ['.maestro']

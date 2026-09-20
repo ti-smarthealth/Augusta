@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "888317602092",
+    "project_id": "tish-app",
+    "storage_bucket": "tish-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:888317602092:android:15f7af2da413342625a489",
+        "android_client_info": {
+          "package_name": "com.tismarthealth.mpn"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDgfn45XGZKiQbKEx_wLNSpCDge4-Btwa0"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

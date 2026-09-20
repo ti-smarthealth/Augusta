@@ -82,9 +82,8 @@ npx eas-cli build --platform ios --profile production --auto-submit
 ### Option B — automatically via GitHub Actions
 
 The `iOS build + TestFlight` workflow (`.github/workflows/submit-ios.yml`) runs
-`eas build … --auto-submit`. Trigger it either way:
-- **Manually:** GitHub → Actions → *iOS build + TestFlight* → Run workflow.
-- **On a version tag:** `git tag v1.0.1 && git push origin v1.0.1`.
+`eas build … --auto-submit`. It runs only by hand: GitHub → Actions → *iOS build
++ TestFlight* → Run workflow. Pushing a version tag does not trigger it.
 
 Requires one GitHub secret: **`EXPO_TOKEN`** (the same Expo access token used by
 the translations pipeline — repo Settings → Secrets and variables → Actions).

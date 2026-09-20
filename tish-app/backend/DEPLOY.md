@@ -17,8 +17,9 @@ checked, not remembered:
 | `deploy-patient-web.yml` | `tish-app/**` (excl. `backend/`, `.maestro/`, `.eas/`) | Amplify app `d1d46k6rhmlsza` |
 | `translations.yml` | `tish-app/locales/**` | EAS Update, branch `production` — validation is the gate |
 
-The iOS build is the one shipping path not on this list: `submit-ios.yml` runs
-on a `v*` tag or by hand, not on a push to `main`.
+The native app builds are the shipping paths not on this list: `submit-ios.yml`
+(TestFlight) and `submit-android.yml` (Play internal testing) run only by hand,
+from the Actions tab — not on a push to `main`, and not on a tag.
 
 > **Still hand-deployed: the three `line/` Lambdas** — `tish-line-webhook`,
 > `tish-line-send`, `tish-line-db`. No workflow matches `line/**` at all, so a

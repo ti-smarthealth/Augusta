@@ -34,7 +34,8 @@
       "permissions": [
         "android.permission.RECORD_AUDIO"
       ],
-      "package": "com.mcha2910.tish"
+      "package": "com.tismarthealth.mpn",
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "output": "static",

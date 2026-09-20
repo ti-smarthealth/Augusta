@@ -1,13 +1,10 @@
 name: iOS build + TestFlight
 
-# Deliberate trigger only — native iOS builds are slow and consume EAS build
-# minutes, so this is NOT on every push. Run it from the Actions tab
-# (workflow_dispatch) or by pushing a version tag like v1.2.0.
+# Manual trigger only — native iOS builds are slow and consume EAS build
+# minutes, so this is NOT on every push, and not on version tags either. Run it
+# from the Actions tab (workflow_dispatch). submit-android.yml is the same.
 on:
   workflow_dispatch:
-  push:
-    tags:
-      - 'v*'
 
 jobs:
   build-and-submit:

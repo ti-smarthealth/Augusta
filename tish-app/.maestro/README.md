@@ -85,7 +85,7 @@ version spells out by hand.
 variables → Actions): `MAESTRO_USERNAME` and `MAESTRO_PASSWORD`. The workflow
 fails with an explicit message rather than a confusing timeout if they are
 missing. `MAESTRO_APP_ID` is set by the workflow itself, since the iOS bundle
-ID (`com.ti-smarthealth.app`) and Android package (`com.mcha2910.tish`) differ.
+ID (`com.ti-smarthealth.app`) and Android package (`com.tismarthealth.mpn`) differ.
 
 **The iOS simulator build is known to work.** EAS build `77329077` produced one
 in 4m20s from the `e2e-test` profile on 2026-08-01 — the first time this app had
@@ -158,7 +158,7 @@ $env:PATH = "C:\maestro\bin;$env:PATH"
 
 Then build an APK (`eas build --profile e2e-test --platform android`), install
 it with `adb install`, set `MAESTRO_USERNAME` / `MAESTRO_PASSWORD` in the shell,
-and run `maestro test -e MAESTRO_APP_ID=com.mcha2910.tish .maestro`.
+and run `maestro test -e MAESTRO_APP_ID=com.tismarthealth.mpn .maestro`.
 
 Useful during authoring: `maestro studio` opens an inspector that shows the
 live view hierarchy and the selector for anything you click.

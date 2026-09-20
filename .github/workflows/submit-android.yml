@@ -1,0 +1,75 @@
+name: Android build + Play internal testing
+
+# Manual trigger only — native Android builds are slow and consume EAS build
+# minutes, so this is NOT on every push, and not on version tags either. Run it
+# from the Actions tab (workflow_dispatch). submit-ios.yml is the same.
+#
+# Two one-time steps have to happen outside CI before this can succeed:
+#   1. The first build runs locally (`eas build -p android --profile production`),
+#      because EAS will not generate the upload keystore in --non-interactive
+#      mode. That build's .aab is uploaded by hand in Play Console → Internal
+#      testing, because the Play API cannot upload to an app with no release.
+#   2. A Google service account key with release permission is stored in EAS
+#      credentials (`eas credentials -p android`), the way the ASC API key is
+#      for iOS. Without it the build succeeds and the submit fails.
+on:
+  workflow_dispatch:
+
+jobs:
+  build-and-submit:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: tish-app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          # Node 22 for the same reason as submit-ios.yml: eas-cli at `latest`
+          # needs it, and the expo action's yarn install enforces engines.
+          node-version: 22
+          cache: npm
+          cache-dependency-path: tish-app/package-lock.json
+
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - name: Install dependencies
+        run: npm ci
+
+      # Fail fast. EAS only validates the submit config *after* the cloud build
+      # finishes, so a missing or unpushed eas.json block costs a full build
+      # before erroring out. Catch it in seconds.
+      # Remember CI reads eas.json from the pushed commit, not your working copy.
+      - name: Validate Play submit config
+        run: |
+          node -e '
+            const fs = require("fs");
+            const android = JSON.parse(fs.readFileSync("eas.json", "utf8")).submit?.production?.android ?? {};
+            const pkg = JSON.parse(fs.readFileSync("app.json", "utf8")).expo?.android?.package;
+            const problems = [];
+            if (!["internal", "alpha", "beta", "production"].includes(android.track))
+              problems.push(`track must be internal, alpha, beta or production, got ${JSON.stringify(android.track)}`);
+            if (!["completed", "draft", "halted", "inProgress"].includes(android.releaseStatus))
+              problems.push(`releaseStatus must be completed, draft, halted or inProgress, got ${JSON.stringify(android.releaseStatus)}`);
+            if (!/^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$/.test(pkg ?? ""))
+              problems.push(`app.json expo.android.package is not a valid package name, got ${JSON.stringify(pkg)}`);
+            if (problems.length) {
+              console.error("Android submit config is not ready:");
+              for (const p of problems) console.error("  - " + p);
+              console.error("");
+              console.error("Fix tish-app/eas.json or tish-app/app.json and PUSH the commit.");
+              process.exit(1);
+            }
+            console.log(`OK - ${pkg} to the ${android.track} track, releaseStatus ${android.releaseStatus}`);
+          '
+
+      # Builds on EAS's cloud (this runner only triggers it), then submits the
+      # resulting .aab to Google Play using the eas.json submit config + the
+      # service account key stored in EAS credentials. No Google secrets live in
+      # this repo or in GitHub.
+      - name: EAS build + auto-submit to Play internal testing
+        run: eas build --platform android --profile production --non-interactive --auto-submit
