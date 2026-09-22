@@ -1,4 +1,7 @@
 import pg from 'pg';
+import { randomUUID } from 'node:crypto';
+import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 const { Pool } = pg;
 
 // Credentials come exclusively from Lambda environment variables — never
@@ -16,6 +19,28 @@ let pool = new Pool({
 // Test seam: lets index.test.mjs substitute a scripted pool so the handler
 // can be exercised functionally without a database connection.
 export function _setPoolForTests(fakePool) { pool = fakePool; }
+
+/**
+ * Report scanning (ocr/README.md). **This Lambda never calls S3.** It only
+ * *signs* two URLs — a PUT the app uploads the photo to, and a GET the app
+ * polls for the OCR result — and signing is pure arithmetic over the
+ * function's own credentials. That is what keeps the OCR pipeline off this
+ * function's VPC and out of its `pg` pool: the heavy work runs in `tish-ocr`,
+ * triggered by the upload itself, and the result comes back to the device
+ * through the second URL without touching the database at all. Nothing is
+ * stored until the user reviews the filled-in form and saves it as they would
+ * a manual entry.
+ *
+ * The two SDK packages are devDependencies, like `@aws-sdk/client-lambda`:
+ * the managed Node runtime provides the v3 SDK, and bundling it would add
+ * megabytes to a ~180KB zip for modules already present.
+ */
+const s3 = new S3Client({});
+let presign = (command, expiresIn) => getSignedUrl(s3, command, { expiresIn });
+/** Test seam: substitute the signer so tests need neither credentials nor a bucket. */
+export function _setPresignerForTests(fn) { presign = fn; }
+/** How long the two URLs stay valid. Long enough for a slow upload and a slow scan, no longer. */
+export const OCR_URL_TTL_SECONDS = 900;
 
 /**
  * The schema as one entry per table, **ordered so a table only ever references
@@ -1062,6 +1087,10 @@ export const ERRORS = Object.freeze({
 
     // 500
     INTERNAL_ERROR: { status: 500, message: 'Internal error' },
+
+    // 503 — a deployment without `OCR_BUCKET` set. The feature is absent, not
+    // broken: ocr/provision.sh phase1 is what sets it.
+    OCR_NOT_CONFIGURED: { status: 503, message: 'Report scanning is not available on this server.' },
 });
 
 /**
@@ -2387,6 +2416,36 @@ export const handler = async (event) => {
             }
             else {
                 fail('METHOD_NOT_ALLOWED', { message: `${method} not supported on /push-tokens.` });
+            }
+        }
+
+        // Report scanning — see the note above `_setPresignerForTests`. One
+        // POST hands back a job id and two short-lived URLs; the app does the
+        // rest against S3 directly and this route never hears about the job
+        // again. Keys are namespaced by the *requester*, not the dependent a
+        // caregiver may be entering for: nothing here is a record of anyone,
+        // and the values land in a form that is saved (or not) through
+        // /test-results with the usual access check.
+        else if (path === "/ocr/scans") {
+            if (method !== 'POST') fail('METHOD_NOT_ALLOWED');
+            else if (!process.env.OCR_BUCKET) fail('OCR_NOT_CONFIGURED');
+            else {
+                const userId = await getUserId(cognitoSub);
+                if (userId === undefined) fail('PROFILE_NOT_FOUND');
+                else {
+                    const Bucket = process.env.OCR_BUCKET;
+                    const jobId = randomUUID();
+                    // The PUT is signed *with* its content type, so a client
+                    // that sends anything else is refused by S3 rather than
+                    // handed to the OCR function.
+                    const uploadUrl = await presign(new PutObjectCommand({
+                        Bucket, Key: `uploads/${userId}/${jobId}.jpg`, ContentType: 'image/jpeg',
+                    }), OCR_URL_TTL_SECONDS);
+                    const resultUrl = await presign(new GetObjectCommand({
+                        Bucket, Key: `results/${userId}/${jobId}.json`,
+                    }), OCR_URL_TTL_SECONDS);
+                    body = { jobId, uploadUrl, resultUrl, expiresIn: OCR_URL_TTL_SECONDS };
+                }
             }
         }
 

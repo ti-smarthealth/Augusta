@@ -1,0 +1,7 @@
+# Pinned: the model files ship inside the wheel, so a version bump is a model
+# change and deserves a look at what it does to a real report. Note this is the
+# 1.x package, not the renamed `rapidocr` 2.x/3.x line whose API differs.
+rapidocr_onnxruntime==1.4.4
+onnxruntime==1.20.1
+numpy<2.3
+Pillow>=10,<12

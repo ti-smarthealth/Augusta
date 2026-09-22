@@ -13,6 +13,11 @@ import {
   Text,
   TextInput
 } from 'react-native-paper';
+import * as ImagePicker from 'expo-image-picker';
+import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
+import { scanReport, ScanError, type ScanStage } from '@/utils/ocr';
+import { matchRows, type ScanMatch } from '@/utils/ocr-match';
+import { MOCK } from '@/constants/config';
 
 // Design System Imports
 import ActiveProfileBadge from '@/components/active-profile-badge';
@@ -47,6 +52,18 @@ export default function ResultsFormScreen() {
   const [saving, setSaving] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, boolean>>({});
 
+  // --- Report scanning ---
+  // `scanStage` is non-null for the duration of a scan and drives both the
+  // button's spinner and the one-line status under it. `scanned` remembers
+  // which fields the last scan filled, so each one carries a "read from your
+  // report — please check" note until the user edits it; `unmatched` is the
+  // rest of the page's text, shown on request so a value for a field the
+  // matcher could not place can still be found without leaving the form.
+  const [scanStage, setScanStage] = useState<ScanStage | null>(null);
+  const [scanned, setScanned] = useState<Record<string, ScanMatch>>({});
+  const [unmatched, setUnmatched] = useState<string[]>([]);
+  const [showUnmatched, setShowUnmatched] = useState(false);
+
   // --- Date State ---
   const [date, setDate] = useState(new Date(initialData?.test_date || new Date()));
   const [showPicker, setShowPicker] = useState(false);
@@ -76,6 +93,105 @@ export default function ResultsFormScreen() {
   };
 
   useEffect(() => { loadConfigs(); }, []);
+
+  /**
+   * Take or choose a photo, shrink it, send it for reading, and put what came
+   * back into the inputs. **Nothing is saved here.** The values land in
+   * `formValues` exactly as typed ones would, and leave through `handleSave`
+   * with the same validation and the same confirmation.
+   */
+  const pickImage = async (source: 'camera' | 'library') => {
+    const options: ImagePicker.ImagePickerOptions = {
+      mediaTypes: ['images'],
+      // No cropping UI: a report is read whole, and the crop step is where
+      // people lose the value column.
+      allowsEditing: false,
+      quality: 1,
+      exif: false,
+    };
+    if (source === 'camera') {
+      const perm = await ImagePicker.requestCameraPermissionsAsync();
+      if (!perm.granted) { notifyUser(t('common.error'), t('resultsForm.scan.cameraDenied')); return null; }
+      return ImagePicker.launchCameraAsync(options);
+    }
+    return ImagePicker.launchImageLibraryAsync(options);
+  };
+
+  /** The picked photo as a ≤2000px JPEG on local disk, ready to upload. */
+  const prepareImage = async (source: 'camera' | 'library'): Promise<string | null> => {
+    // Fixture mode has no file dialog to drive, and `scanReport` answers from
+    // a fixture regardless of the URI — the same reason `mock.ts` exists.
+    if (MOCK) return 'mock://report.jpg';
+
+    let picked: ImagePicker.ImagePickerResult | null;
+    try { picked = await pickImage(source); } catch { picked = null; }
+    if (!picked || picked.canceled || !picked.assets?.[0]) return null;
+    const asset = picked.assets[0];
+
+    // Phone photos are 3000–4000px and several MB. 2000px on the long side
+    // is what the OCR function downsizes to anyway, so do it here, once, and
+    // upload a fifth of the bytes. Smaller images are left alone.
+    const longest = Math.max(asset.width ?? 0, asset.height ?? 0);
+    const context = ImageManipulator.manipulate(asset.uri);
+    if (longest > 2000) {
+      context.resize(asset.width >= asset.height ? { width: 2000 } : { height: 2000 });
+    }
+    const rendered = await context.renderAsync();
+    const jpeg = await rendered.saveAsync({ format: SaveFormat.JPEG, compress: 0.85 });
+    return jpeg.uri;
+  };
+
+  const runScan = async (source: 'camera' | 'library') => {
+    setScanStage('preparing');
+    try {
+      const uri = await prepareImage(source);
+      if (uri === null) return;
+
+      const result = await scanReport(uri, setScanStage);
+      const fill = matchRows(result.rows, configs);
+
+      const filled = Object.keys(fill.values);
+      // A rescan replaces what the previous scan proposed; anything the user
+      // typed into an unmatched field stays.
+      setFormValues((prev: any) => {
+        const next = { ...prev };
+        for (const key of filled) next[key] = fill.values[key].value;
+        return next;
+      });
+      setFieldErrors({});
+      setScanned(fill.values);
+      setUnmatched(fill.unmatched);
+      setShowUnmatched(filled.length === 0 && fill.unmatched.length > 0);
+      if (!isEdit && fill.testDate) setDate(fill.testDate);
+
+      notifyUser(
+        t('resultsForm.scan.doneTitle'),
+        filled.length === 0
+          ? t('resultsForm.scan.doneNone')
+          : t('resultsForm.scan.doneFilled', { filled: filled.length, total: configs.length }),
+      );
+    } catch (e) {
+      console.error('Report scan failed:', e);
+      const message =
+        e instanceof ScanError && e.reason === 'api' && e.failure ? apiErrorMessage(e.failure, t)
+        : e instanceof ScanError && e.reason === 'timeout' ? t('resultsForm.scan.timeout')
+        : t('resultsForm.scan.failed');
+      notifyUser(t('common.error'), message);
+    } finally {
+      setScanStage(null);
+    }
+  };
+
+  const chooseScanSource = () => {
+    // The web picker is a file input; there is no camera to offer separately
+    // (a phone browser adds "take photo" to that input by itself).
+    if (Platform.OS === 'web') { runScan('library'); return; }
+    Alert.alert(t('resultsForm.scan.button'), t('resultsForm.scan.sourcePrompt'), [
+      { text: t('resultsForm.scan.takePhoto'), onPress: () => runScan('camera') },
+      { text: t('resultsForm.scan.choosePhoto'), onPress: () => runScan('library') },
+      { text: t('common.cancel'), style: 'cancel' },
+    ]);
+  };
 
   /**
    * parseFloat("12o") is 12, and parseFloat("abc") is NaN which serialises to
@@ -234,6 +350,28 @@ export default function ResultsFormScreen() {
           onDismiss={() => setShowPicker(false)}
         />
 
+        {/* --- SCAN A REPORT --- */}
+        <View style={[styles.sectionHeader, { marginTop: 8 }]}>
+            <Text style={styles.sectionHeaderText} {...heading(2)}>{t('resultsForm.scan.section')}</Text>
+        </View>
+        <View style={styles.fieldContainer}>
+          <Button
+            mode="outlined"
+            icon="camera"
+            onPress={chooseScanSource}
+            loading={scanStage !== null}
+            disabled={saving || scanStage !== null}
+            textColor={COLORS.primary}
+            style={styles.scanButton}
+            accessibilityHint={t('resultsForm.scan.hint')} {...a11yLang()}
+          >
+            {scanStage ? t(`resultsForm.scan.stage.${scanStage}`) : t('resultsForm.scan.button')}
+          </Button>
+          <HelperText type="info" visible style={styles.scanHelper}>
+            {t('resultsForm.scan.hint')}
+          </HelperText>
+        </View>
+
         {/* --- NUMERIC RESULTS SECTION --- */}
         <View style={[styles.sectionHeader, { marginTop: 8 }]}>
             <Text style={styles.sectionHeaderText} {...heading(2)}>{t('resultsForm.numericValues')}</Text>
@@ -242,6 +380,10 @@ export default function ResultsFormScreen() {
         {configs.map((cfg) => {
           const key = `field_${cfg.field_number}`;
           const hasError = !!fieldErrors[key];
+          // Still exactly what the scan proposed, and not yet touched — the
+          // note goes as soon as the user edits the value, because from then
+          // on it is theirs.
+          const fromScan = !!scanned[key] && String(formValues[key] ?? '') === scanned[key].value;
           // Units are optional — a ratio or a blood group has none — so the
           // parenthesis is only drawn when there is something to put in it,
           // rather than labelling the input "Fasting glucose (undefined)".
@@ -254,7 +396,7 @@ export default function ResultsFormScreen() {
                 accessibilityLabel={label} {...a11yLang()}
                 value={formValues[key]?.toString() || ''}
                 mode="outlined"
-                outlineColor={COLORS.background}
+                outlineColor={fromScan ? COLORS.primary : COLORS.background}
                 activeOutlineColor={hasError ? COLORS.error : COLORS.primary}
                 error={hasError}
                 keyboardType="numeric"
@@ -265,14 +407,43 @@ export default function ResultsFormScreen() {
                 }}
                 disabled={saving}
               />
-              {/* Reserved space keeps vertical rhythm whether or not the
-                  message is showing. */}
-              <HelperText type="error" visible={hasError} style={styles.helper}>
-                {t('resultsForm.invalidNumber')}
+              {/* Reserved space keeps vertical rhythm whether or not a
+                  message is showing. The scan note and the error share the
+                  slot; an invalid number is the one that matters. */}
+              <HelperText type={hasError ? 'error' : 'info'} visible={hasError || fromScan} style={styles.helper}>
+                {hasError ? t('resultsForm.invalidNumber')
+                  : fromScan ? t('resultsForm.scan.readFrom', { row: scanned[key].row })
+                  : ''}
               </HelperText>
             </View>
           );
         })}
+
+        {/* Everything the scan read that matched no field. Off by default
+            when the scan filled something; on by default when it filled
+            nothing, because then this list is the whole result. */}
+        {unmatched.length > 0 && (
+          <View style={styles.unmatchedBlock}>
+            <Button
+              mode="text"
+              compact
+              icon={showUnmatched ? 'chevron-up' : 'chevron-down'}
+              onPress={() => setShowUnmatched((v) => !v)}
+              textColor={COLORS.slate}
+              accessibilityState={{ expanded: showUnmatched }} {...a11yLang()}
+            >
+              {t('resultsForm.scan.unmatchedToggle', { count: unmatched.length })}
+            </Button>
+            {showUnmatched && (
+              <View style={styles.unmatchedList} accessibilityRole="list">
+                <Text style={styles.unmatchedHint}>{t('resultsForm.scan.unmatchedHint')}</Text>
+                {unmatched.map((row, i) => (
+                  <Text key={i} style={styles.unmatchedRow} selectable>{row}</Text>
+                ))}
+              </View>
+            )}
+          </View>
+        )}
 
         <Button 
           mode="contained" 
@@ -321,6 +492,34 @@ const styles = StyleSheet.create({
   helper: {
     height: 20,
     marginTop: -2,
+  },
+  scanButton: {
+    borderRadius: RADIUS.md,
+    borderColor: COLORS.primary,
+    backgroundColor: 'white',
+  },
+  scanHelper: {
+    marginTop: 0,
+    paddingHorizontal: 4,
+  },
+  unmatchedBlock: {
+    marginTop: 4,
+    marginBottom: 8,
+  },
+  unmatchedList: {
+    backgroundColor: 'white',
+    borderRadius: RADIUS.md,
+    padding: 12,
+  },
+  unmatchedHint: {
+    fontSize: 12,
+    color: COLORS.slate,
+    marginBottom: 8,
+  },
+  unmatchedRow: {
+    fontSize: 14,
+    color: COLORS.ink,
+    lineHeight: 22,
   },
 
   sectionLabel: { 

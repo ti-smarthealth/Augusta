@@ -191,7 +191,29 @@
     "invalidNumber": "請輸入數字，或留空。",
     "fixInvalidFields": "部分數值不是有效的數字，請修正標示的欄位。",
     "configLoadFailed": "無法載入檢驗項目",
-    "configLoadFailedHint": "輸入結果前需要先取得檢驗項目清單。請檢查網路連線後再試一次。"
+    "configLoadFailedHint": "輸入結果前需要先取得檢驗項目清單。請檢查網路連線後再試一次。",
+    "scan": {
+      "section": "掃描報告",
+      "button": "掃描檢驗報告",
+      "hint": "拍下紙本報告，我們會填入能辨識的數值。儲存前請逐一核對。",
+      "sourcePrompt": "拍攝報告，或選擇已有的照片。",
+      "takePhoto": "拍照",
+      "choosePhoto": "選擇照片",
+      "cameraDenied": "此 App 尚未取得相機權限。您可以在「設定」中允許，或改為選擇照片。",
+      "stage": {
+        "preparing": "準備中…",
+        "uploading": "上傳中…",
+        "reading": "辨識報告中…"
+      },
+      "doneTitle": "報告已掃描",
+      "doneFilled": "已從報告填入 {{filled}} / {{total}} 個項目。儲存前請核對每一個數值。",
+      "doneNone": "這份報告上找不到符合的檢驗項目名稱。辨識到的文字列在欄位下方。",
+      "readFrom": "來自報告：「{{row}}」，請核對。",
+      "unmatchedToggle_other": "報告上有 {{count}} 行文字未對應到任何項目",
+      "unmatchedHint": "以下是辨識到但無法對應的文字。若其中有您需要的數值，請填入上方對應的欄位。",
+      "timeout": "辨識報告花了太久時間。請將紙張攤平、光線充足後再試一次。",
+      "failed": "無法辨識這張照片。請將紙張攤平、光線充足並填滿畫面後再試一次。"
+    }
   },
   "profile": {
     "title": "使用者個人資料",
@@ -409,6 +431,7 @@
     "other": "其他"
   },
   "errors": {
+    "ocrNotConfigured": "目前無法使用報告掃描功能，您仍可自行輸入數值。",
     "authRequired": "請重新登入後再繼續。",
     "accessDenied": "您沒有查看這些紀錄的權限。",
     "forbidden": "您沒有執行這項操作的權限。",

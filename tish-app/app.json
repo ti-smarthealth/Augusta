@@ -12,7 +12,8 @@
       "infoPlist": {
         "NSSpeechRecognitionUsageDescription": "Allow $(PRODUCT_NAME) to use speech recognition to convert your voice to text.",
         "NSMicrophoneUsageDescription": "Allow $(PRODUCT_NAME) to use the microphone for voice dictation.",
-        "NSPhotoLibraryUsageDescription": "$(PRODUCT_NAME) does not use your photo library. This notice is required because an image component in the app is capable of loading photos from it.",
+        "NSCameraUsageDescription": "Allow $(PRODUCT_NAME) to photograph a printed lab report so its values can be read into the results form for you to check.",
+        "NSPhotoLibraryUsageDescription": "Allow $(PRODUCT_NAME) to choose a photo of a printed lab report so its values can be read into the results form for you to check.",
         "ITSAppUsesNonExemptEncryption": false,
         "UIBackgroundModes": [
           "remote-notification"
@@ -56,6 +57,14 @@
         }
       ],
       "expo-image",
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Allow $(PRODUCT_NAME) to photograph a printed lab report so its values can be read into the results form for you to check.",
+          "photosPermission": "Allow $(PRODUCT_NAME) to choose a photo of a printed lab report so its values can be read into the results form for you to check.",
+          "microphonePermission": false
+        }
+      ],
       "expo-web-browser",
       [
         "expo-speech-recognition",

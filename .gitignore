@@ -24,3 +24,6 @@ line_test.py
 line_jyw.py
 line bot.txt
 py/
+
+# Real lab-report photos used to test OCR by hand. Patient data; never committed.
+reference/

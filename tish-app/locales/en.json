@@ -191,7 +191,30 @@
     "invalidNumber": "Enter a number, or leave this blank.",
     "fixInvalidFields": "Some readings aren't valid numbers. Please correct the highlighted fields.",
     "configLoadFailed": "Couldn't load the test fields",
-    "configLoadFailedHint": "We need the list of test fields before you can enter results. Check your connection and try again."
+    "configLoadFailedHint": "We need the list of test fields before you can enter results. Check your connection and try again.",
+    "scan": {
+      "section": "SCAN A REPORT",
+      "button": "Scan a lab report",
+      "hint": "Take a photo of a printed report and we'll fill in the values we can read. Check each one before saving.",
+      "sourcePrompt": "Photograph the report, or choose a photo you already have.",
+      "takePhoto": "Take photo",
+      "choosePhoto": "Choose photo",
+      "cameraDenied": "Camera access is off for this app. You can allow it in Settings, or choose a photo instead.",
+      "stage": {
+        "preparing": "Preparing…",
+        "uploading": "Uploading…",
+        "reading": "Reading the report…"
+      },
+      "doneTitle": "Report scanned",
+      "doneFilled": "Filled {{filled}} of {{total}} fields from the report. Please check every value before saving.",
+      "doneNone": "We couldn't match any test names on this report. The text we read is listed below the fields.",
+      "readFrom": "Read from your report: \"{{row}}\" — please check.",
+      "unmatchedToggle_one": "{{count}} line from the report didn't match a field",
+      "unmatchedToggle_other": "{{count}} lines from the report didn't match a field",
+      "unmatchedHint": "Text we read but couldn't place. If a value you need is here, type it into its field above.",
+      "timeout": "Reading the report took too long. Please try again, with the page flat and well lit.",
+      "failed": "We couldn't read that photo. Try again with the page flat, well lit and filling the frame."
+    }
   },
   "profile": {
     "title": "User Profile",
@@ -409,6 +432,7 @@
     "other": "Other"
   },
   "errors": {
+    "ocrNotConfigured": "Report scanning isn't available right now. You can still type the values in.",
     "authRequired": "Please sign in again to continue.",
     "accessDenied": "You don't have access to those records.",
     "forbidden": "You don't have permission to do that.",

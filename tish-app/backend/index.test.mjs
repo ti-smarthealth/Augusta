@@ -2528,3 +2528,80 @@ test('POST /medication-library accepts both sides when they are given', async ()
   assert.equal(res.statusCode, 201);
   assert.deepEqual(inserted, ['Aspirin', '阿斯匹靈', '100mg']);
 });
+
+// ---------------------------------------------------------------------------
+// POST /ocr/scans — report scanning hands out two presigned URLs and nothing
+// else. See ocr/README.md; the signer is substituted so no credentials or
+// bucket are needed here.
+// ---------------------------------------------------------------------------
+
+import { _setPresignerForTests, OCR_URL_TTL_SECONDS } from './index.mjs';
+
+function scriptedPresigner() {
+  const signed = [];
+  _setPresignerForTests(async (command, expiresIn) => {
+    signed.push({ name: command.constructor.name, input: command.input, expiresIn });
+    return `https://signed.example/${command.input.Key}?sig=${signed.length}`;
+  });
+  return signed;
+}
+
+test('POST /ocr/scans without auth returns 401 and signs nothing', async () => {
+  const signed = scriptedPresigner();
+  process.env.OCR_BUCKET = 'bucket-under-test';
+  const res = await handler(restEvent({ method: 'POST', path: '/ocr/scans' }));
+  assert.equal(res.statusCode, 401);
+  assert.equal(signed.length, 0);
+});
+
+test('POST /ocr/scans returns a job id and two URLs, keyed by the requester', async () => {
+  const signed = scriptedPresigner();
+  process.env.OCR_BUCKET = 'bucket-under-test';
+  _setPoolForTests(makePool([{ match: /SELECT id FROM users/, result: { rows: [{ id: 42 }] } }]));
+
+  const res = await handler(restEvent({ method: 'POST', path: '/ocr/scans', sub: 'sub-42' }));
+  assert.equal(res.statusCode, 200);
+  const out = parse(res);
+  assert.match(out.jobId, /^[0-9a-f-]{36}$/);
+  assert.equal(out.expiresIn, OCR_URL_TTL_SECONDS);
+  assert.equal(out.uploadUrl, `https://signed.example/uploads/42/${out.jobId}.jpg?sig=1`);
+  assert.equal(out.resultUrl, `https://signed.example/results/42/${out.jobId}.json?sig=2`);
+
+  assert.equal(signed.length, 2);
+  const [put, get] = signed;
+  assert.equal(put.name, 'PutObjectCommand');
+  assert.equal(put.input.Bucket, 'bucket-under-test');
+  assert.equal(put.input.ContentType, 'image/jpeg', 'the PUT is signed with its content type');
+  assert.equal(put.expiresIn, OCR_URL_TTL_SECONDS);
+  assert.equal(get.name, 'GetObjectCommand');
+  assert.equal(get.input.Bucket, 'bucket-under-test');
+  assert.equal(get.expiresIn, OCR_URL_TTL_SECONDS);
+});
+
+test('POST /ocr/scans is 503 OCR_NOT_CONFIGURED when the bucket is not set', async () => {
+  const signed = scriptedPresigner();
+  delete process.env.OCR_BUCKET;
+  _setPoolForTests(makePool([{ match: /SELECT id FROM users/, result: { rows: [{ id: 42 }] } }]));
+  const res = await handler(restEvent({ method: 'POST', path: '/ocr/scans', sub: 'sub-42' }));
+  assert.equal(res.statusCode, 503);
+  assert.equal(parse(res).code, 'OCR_NOT_CONFIGURED');
+  assert.equal(signed.length, 0);
+});
+
+test('GET /ocr/scans is 405 — there is nothing to read back', async () => {
+  scriptedPresigner();
+  process.env.OCR_BUCKET = 'bucket-under-test';
+  _setPoolForTests(makePool([{ match: /SELECT id FROM users/, result: { rows: [{ id: 42 }] } }]));
+  const res = await handler(restEvent({ method: 'GET', path: '/ocr/scans', sub: 'sub-42' }));
+  assert.equal(res.statusCode, 405);
+  assert.equal(parse(res).code, 'METHOD_NOT_ALLOWED');
+});
+
+test('POST /ocr/scans with a Cognito account that has no profile row is 404 PROFILE_NOT_FOUND', async () => {
+  const signed = scriptedPresigner();
+  process.env.OCR_BUCKET = 'bucket-under-test';
+  const res = await handler(restEvent({ method: 'POST', path: '/ocr/scans', sub: 'sub-orphan' }));
+  assert.equal(res.statusCode, 404);
+  assert.equal(parse(res).code, 'PROFILE_NOT_FOUND');
+  assert.equal(signed.length, 0);
+});

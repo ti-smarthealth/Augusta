@@ -78,6 +78,7 @@ const CODE_KEYS = {
   DOSE_ALREADY_CONFIRMED: 'errors.doseAlreadyConfirmed',
   VALIDATION_FAILED: 'errors.validationFailed',
   INTERNAL_ERROR: 'errors.internal',
+  OCR_NOT_CONFIGURED: 'errors.ocrNotConfigured',
 } as const;
 
 /** `problems[].code` — one sentence per rule, with the bounds already in it. */
