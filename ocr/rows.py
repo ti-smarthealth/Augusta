@@ -11,10 +11,13 @@ pure geometry over box coordinates, so it lives here where it can be unit
 tested in a millisecond without loading a model, and `app.py` stays a thin
 adapter around the engine.
 
-The engine's box is four corner points; the row grouping uses only the box's
-vertical centre and height. Two boxes belong to the same row when their
-vertical centres are within half a box-height of each other — printed table
-rows are never closer than that, and skewed phone photos rarely tilt more.
+**Phone photos are never square to the page.** On the first batch of real
+reports (2026-09-22) a rotation of one or two degrees was enough to put a
+value column a whole line above its name column across an A4 width, and the
+grouping paired "WBC" with the RBC result. So the rows are grouped on a
+*de-skewed* vertical position: the engine's boxes are quadrilaterals, the
+long ones give a reliable angle for the printed baseline, and the median of
+those angles is subtracted out before anything is compared.
 
 Every rule here fails silently, the same way `vocabulary.ts` warns on the app
 side: a wrong grouping shows the reader a plausible-looking value from the row
@@ -23,6 +26,8 @@ above, not an error. Keep it simple enough to reason about.
 
 from __future__ import annotations
 
+import math
+from statistics import median
 from typing import Iterable, TypedDict
 
 
@@ -35,6 +40,9 @@ class Line(TypedDict):
     y0: float
     x1: float
     y1: float
+    # Angle of the box's top edge, radians, positive when the right end is
+    # lower. Used only to estimate the page's skew.
+    theta: float
 
 
 class Row(TypedDict):
@@ -46,33 +54,60 @@ class Row(TypedDict):
 
 
 def line_from_engine(box: Iterable[Iterable[float]], text: str, score: float) -> Line:
-    """Collapse the engine's quadrilateral to an axis-aligned box."""
-    xs = [float(p[0]) for p in box]
-    ys = [float(p[1]) for p in box]
-    return Line(text=text.strip(), score=float(score), x0=min(xs), y0=min(ys), x1=max(xs), y1=max(ys))
-
-
-def _centre_y(line: Line) -> float:
-    return (line["y0"] + line["y1"]) / 2
+    """Collapse the engine's quadrilateral to an axis-aligned box plus its tilt."""
+    pts = [(float(p[0]), float(p[1])) for p in box]
+    xs = [p[0] for p in pts]
+    ys = [p[1] for p in pts]
+    # The engine orders corners top-left, top-right, bottom-right, bottom-left.
+    (ax, ay), (bx, by) = pts[0], pts[1]
+    theta = math.atan2(by - ay, bx - ax) if bx != ax else 0.0
+    return Line(text=text.strip(), score=float(score),
+                x0=min(xs), y0=min(ys), x1=max(xs), y1=max(ys), theta=theta)
 
 
 def _height(line: Line) -> float:
     return max(line["y1"] - line["y0"], 1.0)
 
 
+def _width(line: Line) -> float:
+    return line["x1"] - line["x0"]
+
+
+def estimate_skew(lines: Iterable[Line]) -> float:
+    """
+    The page's rotation in radians, from the median tilt of the long boxes.
+
+    Only boxes at least three times wider than tall vote: a short box's angle
+    is dominated by the detector's corner jitter, a long one's by the printed
+    baseline. Anything beyond ±10° is not skew but a photo taken sideways,
+    which this cannot fix and must not make worse, so it is treated as zero.
+    """
+    votes = [l["theta"] for l in lines if _width(l) >= 3 * _height(l) and _width(l) >= 40]
+    if len(votes) < 3:
+        return 0.0
+    skew = median(votes)
+    return skew if abs(skew) <= math.radians(10) else 0.0
+
+
 def group_rows(lines: Iterable[Line]) -> list[Row]:
     """
-    Group boxes into rows by vertical position, then order each row left to
-    right. Rows come back top to bottom.
+    Group boxes into rows by de-skewed vertical position, then order each row
+    left to right. Rows come back top to bottom.
 
     The tolerance is relative to the *row's* running box height rather than a
     fixed pixel count, so the same code works for a 1200px downscale and a
     4000px original, and for large-print headings next to small-print values.
     """
-    ordered = sorted((l for l in lines if l["text"]), key=_centre_y)
+    kept = [l for l in lines if l["text"]]
+    slope = math.tan(estimate_skew(kept))
+
+    def centre_y(line: Line) -> float:
+        cx = (line["x0"] + line["x1"]) / 2
+        return (line["y0"] + line["y1"]) / 2 - slope * cx
+
     rows: list[dict] = []
-    for line in ordered:
-        cy = _centre_y(line)
+    for line in sorted(kept, key=centre_y):
+        cy = centre_y(line)
         placed = False
         for row in rows:
             tol = max(row["h"], _height(line)) * 0.5

@@ -48,9 +48,9 @@ EventBridge (hourly) ───────▶  tish-ocr {"command":"sweep"}   de
 | Piece | Where | Notes |
 | --- | --- | --- |
 | `POST /ocr/scans` | `tish-app/backend/index.mjs` | Presigns PUT `uploads/…` and GET `results/…`, 15-minute TTL. The API Lambda never calls S3 — presigning is arithmetic over its own credentials, which is what keeps this off its VPC and out of its `pg` pool. |
-| `tish-ocr` | `ocr/app.py`, `ocr/rows.py` | Python 3.12 container, **x86_64** (onnxruntime aborts in the arm64 sandbox; deploy-ocr.yml has the failure), 2048MB, 90s. EXIF-rotates, downsizes to 2000px, runs RapidOCR, groups boxes into rows. |
+| `tish-ocr` | `ocr/app.py`, `ocr/rows.py` | Python 3.12 container, **x86_64** (onnxruntime aborts in the arm64 sandbox; deploy-ocr.yml has the failure), 3008MB, 90s. EXIF-rotates, downsizes to 2000px, runs RapidOCR, groups boxes into rows. |
 | Row grouping | `ocr/rows.py` | Pure geometry; `test_rows.py` is the deploy gate. |
-| Matching | `tish-app/utils/ocr-match.ts` | Name found on a row *and* a number after it on that row; longest name wins a shared row; ranges, dates and glued tokens are skipped. Also reads a printed Gregorian or ROC date. |
+| Matching | `tish-app/utils/ocr-match.ts` | Name found on a row *and* a number after it (or a value-and-unit just before it); longest name wins a shared row; ranges, dates, unit scales (`10^3/uL`) and glued tokens are skipped. Aliases are derived from the configured long form — "Hemoglobin (HGB / Hb)" matches any of its three parts — and Simplified readings of Traditional names are folded. Also reads a printed Gregorian or ROC date. |
 | Upload/poll | `tish-app/utils/ocr.ts` | Fixture mode returns a canned Taiwanese report so the review flow runs offline. |
 | Screen | `tish-app/app/results-form.tsx` | "Scan a lab report" → camera or library → filled fields carry the row they came from; unmatched lines are listed on request. |
 
@@ -122,10 +122,15 @@ photo-library string said the app did not use the library; it does now).
 
 ## Not done, on purpose
 
-- **No aliases beyond the two configured names.** A hospital that prints
-  "A1C" where the config says "HbA1c" will not match. The right fix is a
-  per-test alias list editable in the Envars tab, which is a migration plus
-  dashboard work; until then the unmatched list is the fallback.
+- **No aliases beyond what the configured names contain.** "Segment" for
+  neutrophils, "Platelets" for the platelet count, "RDW-CV" where the config
+  says RDW: none of these are in the long form, so none match. The right fix
+  is a per-test alias list editable in the Envars tab, which is a migration
+  plus dashboard work; until then the unmatched list is the fallback.
+- **No column model.** A report whose value column is neither directly after
+  the name nor value-unit-name (a range printed as two bare numbers, say) can
+  still yield the wrong number. The row is shown under the field for exactly
+  this reason.
 - **No table structure.** PP-Structure would recover columns, but it is heavy
   and the "first number after the name on its row" rule is right for the
   overwhelming majority of printed reports.

@@ -38,7 +38,9 @@ from urllib.parse import unquote_plus
 
 import boto3
 
-from rows import group_rows, line_from_engine
+import math
+
+from rows import estimate_skew, group_rows, line_from_engine
 
 log = logging.getLogger()
 log.setLevel(logging.INFO)
@@ -95,6 +97,8 @@ def recognise(data: bytes) -> dict:
     return {
         "engine": "rapidocr_onnxruntime",
         "imageSize": [w, h],
+        # Diagnostic: how far off square the photo was. Not used by the app.
+        "skewDeg": round(math.degrees(estimate_skew(lines)), 2),
         "rows": rows,
         "elapsedMs": round((time.time() - t0) * 1000),
     }

@@ -59,7 +59,29 @@ export interface ScanFill {
  * entirely for the comparison.
  */
 export function normalise(s: string): string {
-  return s.normalize('NFKC').toLowerCase().replace(/\s+/g, '');
+  return simplify(s.normalize('NFKC').toLowerCase()).replace(/\s+/g, '');
+}
+
+/**
+ * The recognition model reads a Traditional character as its Simplified
+ * form more often than not — "紅血球" comes back "红血球", "計數" as "计数" —
+ * while the configured names are Traditional. Both sides are folded to the
+ * Simplified form before comparing. The table covers the characters that
+ * occur in the configured test names, not the language; a name that adds a
+ * new one may need a row here.
+ */
+const SIMPLIFIED: Record<string, string> = {
+  紅: '红', 計: '计', 數: '数', 濃: '浓', 寬: '宽', 絕: '绝', 對: '对', 單: '单',
+  鹼: '碱', 帶: '带', 狀: '状', 纖: '纤', 維: '维', 級: '级', 邊: '边', 細: '细',
+  網: '网', 脫: '脱', 氫: '氢', 腎: '肾', 絲: '丝', 過: '过', 濾: '滤', 門: '门',
+  轉: '转', 總: '总', 膽: '胆', 積: '积', 佈: '布', 體: '体', 檢: '检', 驗: '验',
+  參: '参', 報: '报', 較: '较', 處: '处', 髓: '髓', 芽: '芽', 鈣: '钙', 鈉: '钠',
+  鉀: '钾', 鎂: '镁', 磷: '磷', 蛋: '蛋', 質: '质', 醫: '医', 齡: '龄',
+};
+function simplify(s: string): string {
+  let out = '';
+  for (const ch of s) out += SIMPLIFIED[ch] ?? ch;
+  return out;
 }
 
 /**
@@ -69,7 +91,7 @@ export function normalise(s: string): string {
  * to `spaced` so the search for the value can start where the name ended.
  */
 function fold(s: string): { spaced: string; compact: string; map: number[] } {
-  const spaced = s.normalize('NFKC').toLowerCase().replace(/\s+/g, ' ').trim();
+  const spaced = simplify(s.normalize('NFKC').toLowerCase()).replace(/\s+/g, ' ').trim();
   const map: number[] = [];
   let compact = '';
   for (let i = 0; i < spaced.length; i++) {
@@ -105,6 +127,9 @@ export function firstNumber(text: string): string | null {
     if (/^\d{3,4}$/.test(m[0]) && /^\s*[/.-]\s*\d/.test(after)) continue;
     if (/\d\s*[/.]\s*$/.test(before)) continue;
     if (/^\s*\.\s*\d/.test(after)) continue;
+    // A unit's scale, not a value: "10^3/uL", "x10~6/ul", "×100", "*1000".
+    // (The "10~3" form is already caught as a range above.)
+    if (/^\s*\^/.test(after) || /[x×*^]\s*$/.test(before)) continue;
     // Glued to a letter on the left ("A1c", "T4") is part of a name, not a value.
     if (/[a-z]$/i.test(before)) continue;
     return m[0].replace(/^[<>]/, '');
@@ -136,6 +161,23 @@ export function aliasesOf(name: string): string[] {
   }
   for (const part of inner.split(/[/／,，]/)) push(part);
   return out;
+}
+
+// The units a lab prints straight after a result. Lower-case, NFKC-folded,
+// as `fold` leaves the row.
+const UNIT = String.raw`(?:%|g/dl|g/l|mg/dl|mg/l|u/l|iu/l|fl|pg(?:/cell)?|k/ul|m/ul|million/ul|mmol/l|umol/l|ml/min\S*|10\^?\d\s*/\s*ul|1000/ul)`;
+const VALUE_THEN_UNIT_BEFORE = new RegExp(String.raw`(?:^|\s)[<>]?(\d+(?:\.\d+)?)\s*[*hl]?\s*${UNIT}\s*$`);
+
+/**
+ * A value printed *before* the name, when a unit sits between them:
+ * "CRE 1.21 mg/dL 肌酸酐 0.70 1.30" is code, value, unit, Chinese name,
+ * then the reference range as two bare numbers. Reading forward from the
+ * Chinese name there would give 0.70. A number followed by a unit and then
+ * the name is unambiguous, so it is preferred over anything after the name.
+ */
+export function valueBeforeName(textBefore: string): string | null {
+  const m = VALUE_THEN_UNIT_BEFORE.exec(textBefore);
+  return m ? m[1] : null;
 }
 
 function namesOf(field: ScanField): string[] {
@@ -195,9 +237,11 @@ export function matchRows(rows: OcrRow[], fields: ScanField[]): ScanFill {
       folded.forEach((row, rowIndex) => {
         const at = findAlias(row.compact, key);
         if (at < 0) return;
-        // Resume in the spaced form just past the name's last character.
+        // Resume in the spaced form just past the name's last character —
+        // unless a value-and-unit immediately precedes the name.
+        const start = row.map[at];
         const from = row.map[at + key.length - 1] + 1;
-        const value = firstNumber(row.spaced.slice(from));
+        const value = valueBeforeName(row.spaced.slice(0, start)) ?? firstNumber(row.spaced.slice(from));
         if (value !== null) candidates.push({ field, rowIndex, name, value });
       });
     }

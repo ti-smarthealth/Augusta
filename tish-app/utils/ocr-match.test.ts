@@ -147,3 +147,37 @@ test('a short Latin alias does not match inside another word', () => {
   assert.equal(fill.values.field_3, undefined, 'Hb must not match HbA1c');
   assert.equal(fill.values.field_27, undefined, 'ALT must not match ALTERNATE');
 });
+
+// Three patterns from the first batch of real reports (2026-09-22).
+import { valueBeforeName } from './ocr-match.ts';
+
+test('a unit scale such as 10^3/uL or x10~6 is never taken as the value', () => {
+  assert.equal(firstNumber(' 3.91-9.05 10^3/ul 6.03 6.47'), '6.03');
+  assert.equal(firstNumber(': 10.2 x10~3/ul (3.6-11.2)'), '10.2');
+  assert.equal(firstNumber(' x100 3.92~9.24x1000/uL 6.09'), '6.09');
+});
+
+test('a value printed before the Chinese name, with its unit between, is preferred', () => {
+  const fields = [
+    { field_number: 24, display_name_en: 'Creatinine', display_name_zh_hant: '肌酸酐' },
+    { field_number: 30, display_name_en: 'Albumin', display_name_zh_hant: '白蛋白' },
+  ];
+  const fill = matchRows(rows(
+    'CRE 1.21 mg/dL 肌酸酐 0.70 1.30',
+    'ALB-BCG 4.7 g/dL 白蛋白 3.5 5.7',
+  ), fields);
+  assert.equal(fill.values.field_24?.value, '1.21');
+  assert.equal(fill.values.field_30?.value, '4.7');
+  assert.equal(valueBeforeName('wbc 10.76 h 10^3/ul '), '10.76');
+  assert.equal(valueBeforeName('cbc routine '), null);
+});
+
+test('a Simplified reading of a Traditional name still matches', () => {
+  const fields = [
+    { field_number: 2, display_name_en: 'Red Blood Cell Count (RBC)', display_name_zh_hant: '紅血球計數' },
+    { field_number: 9, display_name_en: 'Red Cell Distribution Width (RDW)', display_name_zh_hant: '紅血球分布寬度' },
+  ];
+  const fill = matchRows(rows('红血球计数 4.43 million/uL', '红血球分布變數 RDW 15.6 %'), fields);
+  assert.equal(fill.values.field_2?.value, '4.43');
+  assert.equal(fill.values.field_9?.value, '15.6');
+});
