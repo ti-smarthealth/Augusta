@@ -380,25 +380,24 @@ export default function ResultsFormScreen() {
             >
               {scanEngine === 'cloud' && scanStage ? t(`resultsForm.scan.stage.${scanStage}`) : t('resultsForm.scan.button')}
             </Button>
-            {/* On-device recognition: no web equivalent, so the button is
-                not offered there rather than offered and failing. */}
-            {Platform.OS !== 'web' && (
-              <Button
-                mode="outlined"
-                icon="cellphone"
-                onPress={() => chooseScanSource('local')}
-                loading={scanEngine === 'local'}
-                disabled={saving || scanStage !== null}
-                textColor={COLORS.slate}
-                style={[styles.scanButton, styles.scanButtonHalf, styles.scanButtonLocal]}
-                accessibilityHint={t('resultsForm.scan.hintLocal')} {...a11yLang()}
-              >
-                {scanEngine === 'local' && scanStage ? t(`resultsForm.scan.stage.${scanStage}`) : t('resultsForm.scan.buttonLocal')}
-              </Button>
-            )}
+            {/* On-device recognition has no web equivalent. The button is
+                still shown there, disabled, so the two-engine layout is the
+                same everywhere and the web makes clear what it lacks. */}
+            <Button
+              mode="outlined"
+              icon="cellphone"
+              onPress={() => chooseScanSource('local')}
+              loading={scanEngine === 'local'}
+              disabled={saving || scanStage !== null || Platform.OS === 'web'}
+              textColor={COLORS.slate}
+              style={[styles.scanButton, styles.scanButtonHalf, styles.scanButtonLocal]}
+              accessibilityHint={t(Platform.OS === 'web' ? 'resultsForm.scan.hintLocalWeb' : 'resultsForm.scan.hintLocal')} {...a11yLang()}
+            >
+              {scanEngine === 'local' && scanStage ? t(`resultsForm.scan.stage.${scanStage}`) : t('resultsForm.scan.buttonLocal')}
+            </Button>
           </View>
           <HelperText type="info" visible style={styles.scanHelper}>
-            {Platform.OS === 'web' ? t('resultsForm.scan.hint') : t('resultsForm.scan.hintBoth')}
+            {Platform.OS === 'web' ? t('resultsForm.scan.hintLocalWeb') : t('resultsForm.scan.hintBoth')}
           </HelperText>
         </View>
 

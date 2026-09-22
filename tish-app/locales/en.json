@@ -198,6 +198,7 @@
       "buttonLocal": "Scan on this phone (test)",
       "hint": "Take a photo of a printed report and we'll fill in the values we can read. Check each one before saving.",
       "hintLocal": "Reads the report on this phone, without uploading it. For comparing against the normal scan.",
+      "hintLocalWeb": "Take a photo of a printed report and we'll fill in the values we can read. On-device scanning is only available in the phone app. Check each value before saving.",
       "hintBoth": "Take a photo of a printed report and we'll fill in the values we can read. The second button reads it on the phone instead, for comparison. Check each value before saving.",
       "doneTitleLocal": "Report scanned on this phone",
       "sourcePrompt": "Photograph the report, or choose a photo you already have.",
