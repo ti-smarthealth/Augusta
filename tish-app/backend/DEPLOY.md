@@ -13,7 +13,7 @@ checked, not remembered:
 | `deploy-admin-api.yml` | `dashboard/server/**` | Lambdas `tish-admin-api` **and `tish-admin-translations`** |
 | `deploy-cognito-triggers.yml` | `dashboard/cognito-triggers/**` | Lambda `tish-admin-presignup` |
 | `deploy-telemetry.yml` | `telemetry/**` | Lambdas `tish-telemetry-ingest`, `tish-telemetry-rollup`, `tish-telemetry-rollup-db` |
-| `deploy-ocr.yml` | `ocr/**` | Lambda `tish-ocr` — a **container image** pushed to ECR `tish-ocr`, not a zip; updates only, `ocr/provision.sh` creates. Not yet provisioned as of 2026-09-22 — see `ocr/README.md`. |
+| `deploy-ocr.yml` | `ocr/**` | Lambda `tish-ocr` — a **container image** pushed to ECR `tish-ocr`, not a zip; updates only, `ocr/provision.sh` created it. Live since 2026-09-22 (x86_64, 3008MB; bucket `tish-ocr-scans`, hourly sweep rule `tish-ocr-sweep`) — see `ocr/README.md`. |
 | `deploy-dashboard.yml` | `dashboard/**` (excl. `server/`) | Amplify app `d1x8yq4r6ivp8n` |
 | `deploy-patient-web.yml` | `tish-app/**` (excl. `backend/`, `.maestro/`, `.eas/`) | Amplify app `d1d46k6rhmlsza` |
 | `translations.yml` | `tish-app/locales/**` | EAS Update, branch `production` — validation is the gate |

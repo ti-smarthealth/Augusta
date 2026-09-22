@@ -181,3 +181,18 @@ test('a Simplified reading of a Traditional name still matches', () => {
   assert.equal(fill.values.field_2?.value, '4.43');
   assert.equal(fill.values.field_9?.value, '15.6');
 });
+
+test('the absolute count is not read as the percentage it is named after', () => {
+  const fields = [
+    { field_number: 10, display_name_en: 'Neutrophils', display_name_zh_hant: '嗜中性白血球' },
+    { field_number: 11, display_name_en: 'Absolute Neutrophil Count (ANC)', display_name_zh_hant: '絕對嗜中性白血球計數' },
+  ];
+  // The model dropped 計, so the ANC name does not match either; the row must
+  // then fill nothing rather than put 4224 in the percentage field.
+  const fill = matchRows(rows('绝對嗜中性白血球数 4224 uL 1570-5950', '嗜中性白血球 62.1 %'), fields);
+  assert.equal(fill.values.field_10?.value, '62.1');
+  assert.equal(fill.values.field_11, undefined);
+  const exact = matchRows(rows('絕對嗜中性白血球計數 4224 /uL'), fields);
+  assert.equal(exact.values.field_11?.value, '4224');
+  assert.equal(exact.values.field_10, undefined);
+});

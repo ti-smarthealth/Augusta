@@ -205,7 +205,19 @@ const LATIN = /^[a-z0-9.]+$/;
  * name has no word boundaries and is taken wherever it appears.
  */
 function findAlias(compact: string, key: string): number {
-  if (!LATIN.test(key)) return compact.indexOf(key);
+  if (!LATIN.test(key)) {
+    // "絕對嗜中性白血球數" is the absolute count, a different test from
+    // "嗜中性白血球" (the percentage). A Chinese name preceded by the
+    // "absolute" qualifier is not that name, unless the name carries the
+    // qualifier itself. (Folded to Simplified by this point.)
+    let from = 0;
+    for (;;) {
+      const at = compact.indexOf(key, from);
+      if (at < 0) return -1;
+      if (!(at >= 2 && compact.slice(at - 2, at) === '绝对' && !key.startsWith('绝对'))) return at;
+      from = at + 1;
+    }
+  }
   let from = 0;
   for (;;) {
     const at = compact.indexOf(key, from);
