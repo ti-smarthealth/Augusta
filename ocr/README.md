@@ -134,6 +134,10 @@ photo-library string said the app did not use the library; it does now).
 - **No table structure.** PP-Structure would recover columns, but it is heavy
   and the "first number after the name on its row" rule is right for the
   overwhelming majority of printed reports.
-- **No on-device OCR.** iOS Vision reads Traditional Chinese well and would
-  cost nothing; Android ML Kit is weaker on dense medical text. Worth revisiting
-  if the Lambda's per-scan latency ever matters.
+- **On-device OCR is a test button, not the product path.** Since 2026-09-23
+  the form has a second button, "Scan on this phone (test)", that runs Google
+  ML Kit's Chinese-script recogniser on the device (`tish-app/utils/ocr-local.ts`)
+  and feeds the same matcher through `ocr-rows.ts`, a port of `rows.py`. It
+  exists to compare the two engines on the same photos; nothing is uploaded.
+  It needs iOS 15.5 (`expo-build-properties` raises the target) and a native
+  build from 1.3.1 on. Not offered on the web.

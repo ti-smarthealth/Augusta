@@ -16,6 +16,7 @@ import {
 import * as ImagePicker from 'expo-image-picker';
 import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 import { scanReport, ScanError, type ScanStage } from '@/utils/ocr';
+import { scanReportLocally } from '@/utils/ocr-local';
 import { matchRows, type ScanMatch } from '@/utils/ocr-match';
 import { MOCK } from '@/constants/config';
 
@@ -60,6 +61,11 @@ export default function ResultsFormScreen() {
   // rest of the page's text, shown on request so a value for a field the
   // matcher could not place can still be found without leaving the form.
   const [scanStage, setScanStage] = useState<ScanStage | null>(null);
+  // Which engine the running scan uses: the cloud function or the phone's
+  // own recogniser. Two buttons for now, side by side, so the same photo can
+  // be read by both and compared — see utils/ocr-local.ts for why.
+  type ScanEngine = 'cloud' | 'local';
+  const [scanEngine, setScanEngine] = useState<ScanEngine | null>(null);
   const [scanned, setScanned] = useState<Record<string, ScanMatch>>({});
   const [unmatched, setUnmatched] = useState<string[]>([]);
   const [showUnmatched, setShowUnmatched] = useState(false);
@@ -141,13 +147,17 @@ export default function ResultsFormScreen() {
     return jpeg.uri;
   };
 
-  const runScan = async (source: 'camera' | 'library') => {
+  const runScan = async (source: 'camera' | 'library', engine: ScanEngine) => {
+    setScanEngine(engine);
     setScanStage('preparing');
     try {
       const uri = await prepareImage(source);
       if (uri === null) return;
 
-      const result = await scanReport(uri, setScanStage);
+      const result = engine === 'local'
+        ? await scanReportLocally(uri, setScanStage)
+        : await scanReport(uri, setScanStage);
+      console.log(`Report scan (${engine}): ${result.rows.length} rows in ${result.elapsedMs ?? '?'}ms`);
       const fill = matchRows(result.rows, configs);
 
       const filled = Object.keys(fill.values);
@@ -165,7 +175,7 @@ export default function ResultsFormScreen() {
       if (!isEdit && fill.testDate) setDate(fill.testDate);
 
       notifyUser(
-        t('resultsForm.scan.doneTitle'),
+        t(engine === 'local' ? 'resultsForm.scan.doneTitleLocal' : 'resultsForm.scan.doneTitle'),
         filled.length === 0
           ? t('resultsForm.scan.doneNone')
           : t('resultsForm.scan.doneFilled', { filled: filled.length, total: configs.length }),
@@ -179,16 +189,18 @@ export default function ResultsFormScreen() {
       notifyUser(t('common.error'), message);
     } finally {
       setScanStage(null);
+      setScanEngine(null);
     }
   };
 
-  const chooseScanSource = () => {
+  const chooseScanSource = (engine: ScanEngine) => {
     // The web picker is a file input; there is no camera to offer separately
     // (a phone browser adds "take photo" to that input by itself).
-    if (Platform.OS === 'web') { runScan('library'); return; }
-    Alert.alert(t('resultsForm.scan.button'), t('resultsForm.scan.sourcePrompt'), [
-      { text: t('resultsForm.scan.takePhoto'), onPress: () => runScan('camera') },
-      { text: t('resultsForm.scan.choosePhoto'), onPress: () => runScan('library') },
+    if (Platform.OS === 'web') { runScan('library', engine); return; }
+    const title = t(engine === 'local' ? 'resultsForm.scan.buttonLocal' : 'resultsForm.scan.button');
+    Alert.alert(title, t('resultsForm.scan.sourcePrompt'), [
+      { text: t('resultsForm.scan.takePhoto'), onPress: () => runScan('camera', engine) },
+      { text: t('resultsForm.scan.choosePhoto'), onPress: () => runScan('library', engine) },
       { text: t('common.cancel'), style: 'cancel' },
     ]);
   };
@@ -355,20 +367,38 @@ export default function ResultsFormScreen() {
             <Text style={styles.sectionHeaderText} {...heading(2)}>{t('resultsForm.scan.section')}</Text>
         </View>
         <View style={styles.fieldContainer}>
-          <Button
-            mode="outlined"
-            icon="camera"
-            onPress={chooseScanSource}
-            loading={scanStage !== null}
-            disabled={saving || scanStage !== null}
-            textColor={COLORS.primary}
-            style={styles.scanButton}
-            accessibilityHint={t('resultsForm.scan.hint')} {...a11yLang()}
-          >
-            {scanStage ? t(`resultsForm.scan.stage.${scanStage}`) : t('resultsForm.scan.button')}
-          </Button>
+          <View style={styles.scanRow}>
+            <Button
+              mode="outlined"
+              icon="cloud-upload"
+              onPress={() => chooseScanSource('cloud')}
+              loading={scanEngine === 'cloud'}
+              disabled={saving || scanStage !== null}
+              textColor={COLORS.primary}
+              style={[styles.scanButton, styles.scanButtonHalf]}
+              accessibilityHint={t('resultsForm.scan.hint')} {...a11yLang()}
+            >
+              {scanEngine === 'cloud' && scanStage ? t(`resultsForm.scan.stage.${scanStage}`) : t('resultsForm.scan.button')}
+            </Button>
+            {/* On-device recognition: no web equivalent, so the button is
+                not offered there rather than offered and failing. */}
+            {Platform.OS !== 'web' && (
+              <Button
+                mode="outlined"
+                icon="cellphone"
+                onPress={() => chooseScanSource('local')}
+                loading={scanEngine === 'local'}
+                disabled={saving || scanStage !== null}
+                textColor={COLORS.slate}
+                style={[styles.scanButton, styles.scanButtonHalf, styles.scanButtonLocal]}
+                accessibilityHint={t('resultsForm.scan.hintLocal')} {...a11yLang()}
+              >
+                {scanEngine === 'local' && scanStage ? t(`resultsForm.scan.stage.${scanStage}`) : t('resultsForm.scan.buttonLocal')}
+              </Button>
+            )}
+          </View>
           <HelperText type="info" visible style={styles.scanHelper}>
-            {t('resultsForm.scan.hint')}
+            {Platform.OS === 'web' ? t('resultsForm.scan.hint') : t('resultsForm.scan.hintBoth')}
           </HelperText>
         </View>
 
@@ -493,10 +523,20 @@ const styles = StyleSheet.create({
     height: 20,
     marginTop: -2,
   },
+  scanRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
   scanButton: {
     borderRadius: RADIUS.md,
     borderColor: COLORS.primary,
     backgroundColor: 'white',
+  },
+  scanButtonHalf: {
+    flex: 1,
+  },
+  scanButtonLocal: {
+    borderColor: COLORS.slate,
   },
   scanHelper: {
     marginTop: 0,
