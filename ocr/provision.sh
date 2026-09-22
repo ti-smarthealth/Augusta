@@ -147,7 +147,7 @@ phase2() {
     aws lambda create-function --function-name "$FUNCTION" \
       --package-type Image --code ImageUri="$IMAGE" \
       --role "arn:aws:iam::$ACCOUNT:role/$OCR_ROLE" \
-      --architectures arm64 --memory-size 2048 --timeout 90 \
+      --architectures x86_64 --memory-size 2048 --timeout 90 \
       --environment "Variables={OCR_BUCKET=$BUCKET,RETENTION_SECONDS=$RETENTION_SECONDS}" \
       --description "Reads photographed lab reports; see ocr/README.md" >/dev/null
     aws lambda wait function-active --function-name "$FUNCTION"

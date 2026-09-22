@@ -8,9 +8,9 @@
 # ~150MB of wheels, arm64 wheels for everything, a 2–3s cold start. The image
 # still exceeds the 250MB zip limit, hence the container.
 #
-# Built for arm64 in CI (deploy-ocr.yml) via buildx; the base image is
-# multi-arch. Keep the platform in the build command, not here, so a local
-# x86 build for debugging works unchanged.
+# Built for x86_64 in CI (deploy-ocr.yml). Not arm64: onnxruntime's CPU
+# detection aborts the process in Lambda's arm64 sandbox (the workflow has
+# the failure). Keep the platform in the build command, not here.
 FROM public.ecr.aws/lambda/python:3.12
 
 # The models load with cv2, which wants these even in headless form.

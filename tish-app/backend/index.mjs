@@ -2448,9 +2448,11 @@ export const handler = async (event) => {
                 else {
                     const Bucket = process.env.OCR_BUCKET;
                     const jobId = randomUUID();
-                    // The PUT is signed *with* its content type, so a client
-                    // that sends anything else is refused by S3 rather than
-                    // handed to the OCR function.
+                    // ContentType is part of the signed request, but S3 does
+                    // not enforce it on a presigned PUT (checked 2026-09-22:
+                    // an image/png header on this URL was accepted). The app
+                    // sends JPEG; the OCR function decodes whatever arrives
+                    // with PIL and reports a decode failure as a result.
                     const uploadUrl = await presign({ put: {
                         Bucket, Key: `uploads/${userId}/${jobId}.jpg`, ContentType: 'image/jpeg',
                     } }, OCR_URL_TTL_SECONDS);

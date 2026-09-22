@@ -29,8 +29,8 @@ Lambda, on our own bucket, next to the database.
 **ONNX, not PaddlePaddle.** The PP-OCR models are the right ones for
 Traditional Chinese, but the Paddle framework is over a gigabyte, x86-only in
 practice and slow to cold start. `rapidocr_onnxruntime` ships the same models
-exported to ONNX: ~150MB, arm64 wheels, a 2–3s cold start, and a phone photo of
-an A4 report reads in 3–8s at 2GB of memory. At that shape a scan costs a
+exported to ONNX: a ~390MB image, a few seconds' cold start, and a phone photo
+of an A4 report reads in seconds at 2GB of memory. At that shape a scan costs a
 fraction of a cent and an idle month costs nothing; the always-on alternative
 starts at $25/month before the first page.
 
@@ -48,7 +48,7 @@ EventBridge (hourly) ───────▶  tish-ocr {"command":"sweep"}   de
 | Piece | Where | Notes |
 | --- | --- | --- |
 | `POST /ocr/scans` | `tish-app/backend/index.mjs` | Presigns PUT `uploads/…` and GET `results/…`, 15-minute TTL. The API Lambda never calls S3 — presigning is arithmetic over its own credentials, which is what keeps this off its VPC and out of its `pg` pool. |
-| `tish-ocr` | `ocr/app.py`, `ocr/rows.py` | Python 3.12 container, arm64, 2048MB, 90s. EXIF-rotates, downsizes to 2000px, runs RapidOCR, groups boxes into rows. |
+| `tish-ocr` | `ocr/app.py`, `ocr/rows.py` | Python 3.12 container, **x86_64** (onnxruntime aborts in the arm64 sandbox; deploy-ocr.yml has the failure), 2048MB, 90s. EXIF-rotates, downsizes to 2000px, runs RapidOCR, groups boxes into rows. |
 | Row grouping | `ocr/rows.py` | Pure geometry; `test_rows.py` is the deploy gate. |
 | Matching | `tish-app/utils/ocr-match.ts` | Name found on a row *and* a number after it on that row; longest name wins a shared row; ranges, dates and glued tokens are skipped. Also reads a printed Gregorian or ROC date. |
 | Upload/poll | `tish-app/utils/ocr.ts` | Fixture mode returns a canned Taiwanese report so the review flow runs offline. |

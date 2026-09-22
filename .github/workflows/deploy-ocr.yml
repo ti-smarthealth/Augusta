@@ -50,11 +50,14 @@ jobs:
         id: ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      # **arm64, cross-built.** The runner is x86; QEMU emulates the pip
-      # install for the arm64 wheels. It is slow (several minutes) but every
-      # other Lambda in the account is Graviton and this one is the heaviest,
-      # so it is the one that most benefits from the cheaper per-ms rate.
-      - uses: docker/setup-qemu-action@v3
+      # **x86_64, not arm64 — and not for want of trying.** The first build was
+      # arm64 under QEMU, for the Graviton rate every other Lambda here gets.
+      # It aborted on every invocation (2026-09-22): onnxruntime's CPU
+      # detection (pytorch/cpuinfo) reads /sys/devices/system/cpu/possible,
+      # which Lambda's arm64 sandbox does not provide, and the failure is a
+      # C++ terminate() before Python can catch anything. On x86 that library
+      # uses CPUID and never touches sysfs. The runner is x86 too, so no
+      # emulation: the build is minutes faster as a side effect.
       - uses: docker/setup-buildx-action@v3
 
       - name: Build and push image
@@ -64,7 +67,7 @@ jobs:
         run: |
           IMAGE="$REGISTRY/$ECR_REPOSITORY"
           docker buildx build \
-            --platform linux/arm64 \
+            --platform linux/amd64 \
             --provenance=false \
             --tag "$IMAGE:${GITHUB_SHA}" \
             --tag "$IMAGE:latest" \
@@ -77,10 +80,15 @@ jobs:
       # `:latest` image this run just pushed. `--provenance=false` above
       # matters: Lambda rejects the attestation manifest buildx attaches by
       # default ("image manifest media type not supported").
+      #
+      # `--architectures` is stated on every update so the function can never
+      # drift from the image: it is what moved the live function from arm64
+      # to x86_64 when the platform above changed.
       - name: Update Lambda code
         run: |
           aws lambda update-function-code \
             --function-name "$FUNCTION_NAME" \
             --image-uri "${{ steps.build.outputs.image }}" \
+            --architectures x86_64 \
             --publish
           aws lambda wait function-updated --function-name "$FUNCTION_NAME"
