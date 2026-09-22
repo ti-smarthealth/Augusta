@@ -17,6 +17,7 @@ import {
 import PlatformDatePicker from '../components/platform-date-picker';
 import { COLORS, SHADOWS } from '../constants/theme';
 import { GlobalStyles } from '../styles/globalstyles';
+import { toLocalDateString } from '../utils/date';
 import { apiErrorMessage, describeApiFailure } from '@/utils/api-errors';
 import { a11yLang, heading } from '@/utils/accessibility';
 
@@ -201,7 +202,28 @@ export default function AppointmentFormScreen() {
         <View style={styles.fieldContainer}>
             {/* The TextInput inside is non-editable and behind pointerEvents
                 none — this Pressable is the real control, so it carries the
-                name and the current value. */}
+                name and the current value.
+
+                On the web it is a native date input instead, as the results
+                form does: the Pressable is a <button> there, and the
+                calendar icon inside the TextInput is one too, which is
+                invalid HTML and what React's nested-button warning was. Local
+                time both ways, for the same off-by-one-day reason as there. */}
+            {Platform.OS === 'web' ? (
+              <input
+                type="date"
+                aria-label={t('appointmentForm.dateLabel')}
+                value={toLocalDateString(date)}
+                disabled={isSaving}
+                onChange={(e) => {
+                  const [y, m, d] = e.target.value.split('-').map(Number);
+                  if (Number.isFinite(y) && Number.isFinite(m) && Number.isFinite(d)) {
+                    setDate(new Date(y, m - 1, d, date.getHours(), date.getMinutes()));
+                  }
+                }}
+                style={webInputStyle}
+              />
+            ) : (
             <Pressable
                 onPress={() => !isSaving && setShowPicker(true)}
                 accessibilityRole="button"
@@ -218,10 +240,11 @@ export default function AppointmentFormScreen() {
                         mode="outlined" 
                         style={styles.input} 
                         editable={false} tabIndex={-1} 
-                        right={<TextInput.Icon aria-hidden tabIndex={-1} icon="calendar" color={COLORS.primary} />} 
+                        right={<TextInput.Icon aria-hidden tabIndex={-1} icon="calendar" color={COLORS.primary} />}
                     />
                 </View>
             </Pressable>
+            )}
             <HelperText type="info" visible={false} style={styles.helper}>{null}</HelperText>
         </View>
 
@@ -333,6 +356,18 @@ export default function AppointmentFormScreen() {
     </View>
   );
 }
+
+// The same native date input the results form uses on the web.
+const webInputStyle = {
+    padding: '14px',
+    borderRadius: '12px',
+    border: '1px solid #E2E8F0',
+    backgroundColor: 'white',
+    width: '100%',
+    fontFamily: 'inherit',
+    fontSize: '16px',
+    outline: 'none'
+};
 
 const styles = StyleSheet.create({
   headerTitle: { fontWeight: '800', fontSize: 18 },

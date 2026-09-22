@@ -2,7 +2,7 @@ import { useRouter } from 'expo-router';
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Platform, Pressable, StyleSheet, View } from 'react-native';
-import { Avatar, Divider, IconButton, Menu, Surface, Text } from 'react-native-paper';
+import { Avatar, Divider, Icon, Menu, Surface, Text } from 'react-native-paper';
 import { COLORS, LAYOUT } from '../constants/theme';
 import { useAuth } from '../context/AuthContext';
 import { a11yLang } from '../utils/accessibility';
@@ -49,15 +49,13 @@ export default function ProfileHeader({ rightActions }: ProfileHeaderProps) {
               </Text>
             </View>
             {/* Decorative: the Pressable above carries the name and the
-                expanded state, so this would only add a second, nameless
-                control to the accessibility tree. */}
-            <IconButton
-              icon="chevron-down"
-              size={16}
-              style={{ margin: 0, marginLeft: -4 }}
-              accessible={false}
-              importantForAccessibility="no"
-            />
+                expanded state. A plain Icon rather than an IconButton, because
+                an IconButton is itself a button — and on the web a button
+                inside a button is invalid HTML, which React warned about on
+                every tab (this header is on all of them). */}
+            <View style={styles.chevron} aria-hidden importantForAccessibility="no">
+              <Icon source="chevron-down" size={16} />
+            </View>
           </Pressable>
         }
       >
@@ -118,6 +116,15 @@ const styles = StyleSheet.create({
   managingBorder: {
     borderWidth: 2,
     borderColor: COLORS.accent, // Teal color for managing
+  },
+  // Matches the box an IconButton of size 16 used to occupy, so the header
+  // does not shift.
+  chevron: {
+    width: 24,
+    height: 24,
+    marginLeft: -4,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   textWrapper: {
     marginLeft: 10,

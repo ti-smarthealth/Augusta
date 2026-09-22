@@ -3,7 +3,7 @@ import { goBackOrHome } from '@/utils/navigation';
 import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Alert, Pressable, ScrollView, StyleSheet, View } from 'react-native';
-import { Appbar, Avatar, Button, Chip, Dialog, IconButton, Portal, Surface, Text, TextInput } from 'react-native-paper';
+import { Appbar, Avatar, Button, Chip, Dialog, Icon, Portal, Surface, Text, TextInput } from 'react-native-paper';
 import ActiveProfileBadge from '../components/active-profile-badge';
 import { COLORS, SHADOWS } from '../constants/theme';
 import { useAuth } from '../context/AuthContext';
@@ -90,7 +90,7 @@ export default function ManagedUsersScreen() {
           <Surface style={[styles.userCard, !activeDependent && styles.activeCard]} elevation={0}>
             <Avatar.Text size={40} label={t('managedUsers.selfAvatarInitials')} />
             <Text style={styles.userName}>{t('managedUsers.yourOwnRecords')}</Text>
-            {!activeDependent && <IconButton icon="check-circle" iconColor={COLORS.primary} />}
+            {!activeDependent && <View style={styles.activeTick} aria-hidden importantForAccessibility="no"><Icon source="check-circle" size={24} color={COLORS.primary} /></View>}
           </Surface>
         </Pressable>
 
@@ -111,7 +111,7 @@ export default function ManagedUsersScreen() {
                 <Text style={styles.userName}>{dep.full_name}</Text>
                 <Text style={styles.userSub}>{labelForType(dep.relationship_type)}</Text>
               </View>
-              {activeDependent?.id === dep.id && <IconButton icon="check-circle" iconColor={COLORS.primary} />}
+              {activeDependent?.id === dep.id && <View style={styles.activeTick} aria-hidden importantForAccessibility="no"><Icon source="check-circle" size={24} color={COLORS.primary} /></View>}
             </Surface>
           </Pressable>
         ))}
@@ -174,6 +174,9 @@ export default function ManagedUsersScreen() {
 
 const styles = StyleSheet.create({
   userCard: { flexDirection: 'row', alignItems: 'center', padding: 15, borderRadius: 16, backgroundColor: 'white', marginBottom: 10, ...SHADOWS.soft, borderWidth: 2, borderColor: 'transparent' },
+  // The box an IconButton used to take, so the row does not reflow. A plain
+  // Icon: the row is the button, and a button inside it is invalid on the web.
+  activeTick: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', marginLeft: 'auto' },
   activeCard: { borderColor: COLORS.primary },
   userName: { fontSize: 16, fontWeight: '700', color: COLORS.ink, marginLeft: 15 },
   userSub: { fontSize: 12, color: COLORS.slate },
