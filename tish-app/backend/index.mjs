@@ -1,7 +1,5 @@
 import pg from 'pg';
 import { randomUUID } from 'node:crypto';
-import { S3Client, PutObjectCommand, GetObjectCommand } from '@aws-sdk/client-s3';
-import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 const { Pool } = pg;
 
 // Credentials come exclusively from Lambda environment variables — never
@@ -33,12 +31,27 @@ export function _setPoolForTests(fakePool) { pool = fakePool; }
  *
  * The two SDK packages are devDependencies, like `@aws-sdk/client-lambda`:
  * the managed Node runtime provides the v3 SDK, and bundling it would add
- * megabytes to a ~180KB zip for modules already present.
+ * megabytes to a ~180KB zip for modules already present. **And they are
+ * imported lazily, like `defaultInvokeDb` in escalate.mjs**, because both
+ * test workflows install with `--omit=dev`: a top-level import made every
+ * suite fail to load on CI (2026-09-22) while passing locally where the dev
+ * install had them. The signer is the only code that touches them, and tests
+ * replace it through the seam below, so the packages are never loaded there.
+ *
+ * `command` is `{ put: {...} }` or `{ get: {...} }` — plain input, not an SDK
+ * command object, so the seam does not need the SDK either.
  */
-const s3 = new S3Client({});
-let presign = (command, expiresIn) => getSignedUrl(s3, command, { expiresIn });
-/** Test seam: substitute the signer so tests need neither credentials nor a bucket. */
-export function _setPresignerForTests(fn) { presign = fn; }
+let s3Client;
+async function defaultPresign(command, expiresIn) {
+    const { S3Client, PutObjectCommand, GetObjectCommand } = await import('@aws-sdk/client-s3');
+    const { getSignedUrl } = await import('@aws-sdk/s3-request-presigner');
+    s3Client ??= new S3Client({});
+    const cmd = command.put ? new PutObjectCommand(command.put) : new GetObjectCommand(command.get);
+    return getSignedUrl(s3Client, cmd, { expiresIn });
+}
+let presign = defaultPresign;
+/** Test seam: substitute the signer so tests need neither credentials, a bucket nor the SDK. */
+export function _setPresignerForTests(fn) { presign = fn ?? defaultPresign; }
 /** How long the two URLs stay valid. Long enough for a slow upload and a slow scan, no longer. */
 export const OCR_URL_TTL_SECONDS = 900;
 
@@ -2438,12 +2451,12 @@ export const handler = async (event) => {
                     // The PUT is signed *with* its content type, so a client
                     // that sends anything else is refused by S3 rather than
                     // handed to the OCR function.
-                    const uploadUrl = await presign(new PutObjectCommand({
+                    const uploadUrl = await presign({ put: {
                         Bucket, Key: `uploads/${userId}/${jobId}.jpg`, ContentType: 'image/jpeg',
-                    }), OCR_URL_TTL_SECONDS);
-                    const resultUrl = await presign(new GetObjectCommand({
+                    } }, OCR_URL_TTL_SECONDS);
+                    const resultUrl = await presign({ get: {
                         Bucket, Key: `results/${userId}/${jobId}.json`,
-                    }), OCR_URL_TTL_SECONDS);
+                    } }, OCR_URL_TTL_SECONDS);
                     body = { jobId, uploadUrl, resultUrl, expiresIn: OCR_URL_TTL_SECONDS };
                 }
             }

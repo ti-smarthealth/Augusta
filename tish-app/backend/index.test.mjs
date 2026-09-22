@@ -2540,8 +2540,10 @@ import { _setPresignerForTests, OCR_URL_TTL_SECONDS } from './index.mjs';
 function scriptedPresigner() {
   const signed = [];
   _setPresignerForTests(async (command, expiresIn) => {
-    signed.push({ name: command.constructor.name, input: command.input, expiresIn });
-    return `https://signed.example/${command.input.Key}?sig=${signed.length}`;
+    const name = command.put ? 'PutObjectCommand' : 'GetObjectCommand';
+    const input = command.put ?? command.get;
+    signed.push({ name, input, expiresIn });
+    return `https://signed.example/${input.Key}?sig=${signed.length}`;
   });
   return signed;
 }

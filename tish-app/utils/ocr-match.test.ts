@@ -107,3 +107,43 @@ test('detectTestDate ignores a birth date, an impossible date and a future year'
   assert.equal(detectTestDate(rows('2028/01/01'), now), null);
   assert.equal(detectTestDate(rows('HbA1c 6.5'), now), null);
 });
+
+// The live test_config names are the long form with abbreviations in
+// brackets; a report prints one of the parts. These pin the alias derivation
+// and the word-boundary rule that keeps a short alias from matching inside
+// another word.
+import { aliasesOf } from './ocr-match.ts';
+
+test('aliasesOf splits the long form into printable parts', () => {
+  assert.deepEqual(aliasesOf('Hemoglobin (HGB / Hb)'), ['Hemoglobin', 'HGB', 'Hb']);
+  assert.deepEqual(aliasesOf('Aspartate Aminotransferase (AST / GOT)'), ['Aspartate Aminotransferase', 'AST', 'GOT']);
+  assert.deepEqual(aliasesOf('Neutrophils'), ['Neutrophils', 'Neutrophil']);
+  assert.deepEqual(aliasesOf('血比容／紅血球容積比'), ['血比容', '紅血球容積比']);
+  assert.deepEqual(aliasesOf('Creatinine'), ['Creatinine']);
+});
+
+const liveFields = [
+  { field_number: 1, display_name_en: 'White Blood Cell Count (WBC)', display_name_zh_hant: '白血球計數' },
+  { field_number: 3, display_name_en: 'Hemoglobin (HGB / Hb)', display_name_zh_hant: '血紅素' },
+  { field_number: 10, display_name_en: 'Neutrophils', display_name_zh_hant: '嗜中性白血球' },
+  { field_number: 27, display_name_en: 'Alanine Aminotransferase (ALT / GPT)', display_name_zh_hant: '丙胺酸轉胺酶' },
+];
+
+test('a report line matches by abbreviation, by singular, and by the Chinese head', () => {
+  const fill = matchRows(rows(
+    'WBC 白血球 7.2 10^3/uL 4.0-10.0',
+    'Hb 血紅素 13.5 g/dL',
+    'Neutrophil 62.1 %',
+    'GPT 28 U/L',
+  ), liveFields);
+  assert.equal(fill.values.field_1?.value, '7.2');
+  assert.equal(fill.values.field_3?.value, '13.5');
+  assert.equal(fill.values.field_10?.value, '62.1');
+  assert.equal(fill.values.field_27?.value, '28');
+});
+
+test('a short Latin alias does not match inside another word', () => {
+  const fill = matchRows(rows('HbA1c 6.5 %', 'ALTERNATE 12'), liveFields);
+  assert.equal(fill.values.field_3, undefined, 'Hb must not match HbA1c');
+  assert.equal(fill.values.field_27, undefined, 'ALT must not match ALTERNATE');
+});

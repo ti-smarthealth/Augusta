@@ -112,19 +112,67 @@ export function firstNumber(text: string): string | null {
   return null;
 }
 
+/**
+ * The names a report might print for one configured name.
+ *
+ * The configured English names are the long, unambiguous form with the
+ * abbreviations in brackets — "Hemoglobin (HGB / Hb)", "Aspartate
+ * Aminotransferase (AST / GOT)" — and a report prints one of the parts, never
+ * the whole. So each part is an alias: the text before the bracket, each
+ * slash-separated item inside it, and, for a Latin word, its singular
+ * ("Neutrophils" is printed "Neutrophil"). Chinese names split on the
+ * full-width slash the same way ("血比容／紅血球容積比").
+ */
+export function aliasesOf(name: string): string[] {
+  const out: string[] = [];
+  const push = (s: string) => { const t = s.trim(); if (t) out.push(t); };
+  const m = /^([^()（）]*)[(（]([^()（）]*)[)）]\s*$/.exec(name.trim());
+  const head = m ? m[1] : name;
+  const inner = m ? m[2] : '';
+  for (const part of head.split(/[/／]/)) {
+    push(part);
+    const t = part.trim();
+    if (/^[A-Za-z ]+s$/.test(t) && t.length >= 5) push(t.slice(0, -1));
+  }
+  for (const part of inner.split(/[/／,，]/)) push(part);
+  return out;
+}
+
 function namesOf(field: ScanField): string[] {
   const raw = [field.display_name_en, field.display_name_zh_hant, field.display_name];
   const seen = new Set<string>();
   const out: string[] = [];
   for (const n of raw) {
     if (typeof n !== 'string') continue;
-    const key = normalise(n);
-    // One character matches everything; two is the floor ("Na", "Cr", "鈣").
-    if (key.length < 2 || seen.has(key)) continue;
-    seen.add(key);
-    out.push(n);
+    for (const alias of [n, ...aliasesOf(n)]) {
+      const key = normalise(alias);
+      // One character matches everything; two is the floor ("Hb", "Cr", "鈣").
+      if (key.length < 2 || seen.has(key)) continue;
+      seen.add(key);
+      out.push(alias);
+    }
   }
   return out;
+}
+
+const LATIN = /^[a-z0-9.]+$/;
+
+/**
+ * Where `key` occurs in `compact`, or -1. A Latin alias must stand on its own:
+ * "Hb" is not found in "HbA1c", "ALT" is not found in "ALTERNATE". A Chinese
+ * name has no word boundaries and is taken wherever it appears.
+ */
+function findAlias(compact: string, key: string): number {
+  if (!LATIN.test(key)) return compact.indexOf(key);
+  let from = 0;
+  for (;;) {
+    const at = compact.indexOf(key, from);
+    if (at < 0) return -1;
+    const before = compact[at - 1];
+    const after = compact[at + key.length];
+    if (!(before && /[a-z]/.test(before)) && !(after && /[a-z]/.test(after))) return at;
+    from = at + 1;
+  }
 }
 
 interface Candidate { field: ScanField; rowIndex: number; name: string; value: string; }
@@ -145,7 +193,7 @@ export function matchRows(rows: OcrRow[], fields: ScanField[]): ScanFill {
     for (const name of namesOf(field)) {
       const key = normalise(name);
       folded.forEach((row, rowIndex) => {
-        const at = row.compact.indexOf(key);
+        const at = findAlias(row.compact, key);
         if (at < 0) return;
         // Resume in the spaced form just past the name's last character.
         const from = row.map[at + key.length - 1] + 1;
