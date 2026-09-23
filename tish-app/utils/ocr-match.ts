@@ -142,6 +142,13 @@ export function firstNumber(text: string): string | null {
     // A unit's scale, not a value: "10^3/uL", "x10~6/ul", "×100", "*1000".
     // (The "10~3" form is already caught as a range above.)
     if (/^\s*\^/.test(after) || /[x×*^]\s*$/.test(before)) continue;
+    // No lab result has six or more digits before the point. What does is a
+    // compact date ("20250418"), a chart number or an order id — and on a
+    // row whose value column is blank, one of those was the first number
+    // after the name.
+    if (/^\d{6,}$/.test(m[0].replace(/^[<>]/, '').split('.')[0])) continue;
+    // A clock time ("10:33"): either half of it.
+    if (/^\s*:\s*\d{2}\b/.test(after) || /\d\s*:\s*$/.test(before)) continue;
     // Glued to a letter on the left ("A1c", "T4") is part of a name, not a value.
     if (/[a-z]$/i.test(before)) continue;
     return m[0].replace(/^[<>]/, '');

@@ -217,3 +217,12 @@ test('a configured alias matches a printed name the long form does not contain',
   assert.equal(fill.values.field_10?.name, 'Segment');
   assert.equal(fill.values.field_5, undefined, 'no alias yet, so "Platelets" still does not match');
 });
+
+test('a compact date or an id is never the value, even on a row with no result', () => {
+  // The date and the time are skipped; the trailing 0 is the row's own
+  // number (a reference bound), which is as far as a row can be read.
+  assert.equal(firstNumber(' % 杨文祺 20250418 10:33 20250418 0'), '0');
+  assert.equal(firstNumber(' 採檢 08:12 6.5'), '6.5');
+  assert.equal(firstNumber(' 病歷號 00123456 6.5'), '6.5');
+  assert.equal(firstNumber(' 453 103/uL 20250418 150-400'), '453');
+});
