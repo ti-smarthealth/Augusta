@@ -346,7 +346,9 @@ const TABLE_DEFINITIONS = [
     // never edited afterwards — changing it would silently re-label every
     // reading already recorded in that column. Localised in migration 018;
     // `units` is not, because "mmol/L" is a symbol rather than a word.
-    { name: 'test_config', create: `CREATE TABLE test_config (field_number INTEGER PRIMARY KEY, display_name_en TEXT NOT NULL, display_name_zh_hant TEXT, units TEXT, description TEXT);` },
+    // Migration 019 mirrored: `aliases` is comma-separated TEXT — the names a
+    // hospital prints for the test, read by the report-scan matcher.
+    { name: 'test_config', create: `CREATE TABLE test_config (field_number INTEGER PRIMARY KEY, display_name_en TEXT NOT NULL, display_name_zh_hant TEXT, units TEXT, description TEXT, aliases TEXT);` },
     { name: 'test_results', create: `CREATE TABLE test_results (
         id SERIAL PRIMARY KEY,
         user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,

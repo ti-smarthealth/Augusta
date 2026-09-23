@@ -1,0 +1,24 @@
+-- Aliases for the test names: what a hospital actually prints.
+--
+-- **Why.** Report scanning (ocr/README.md) fills the results form by finding
+-- a configured test name on a line of the photographed report. The first
+-- batch of real reports (2026-09-22) showed how often the printed name is
+-- neither configured name nor anything derivable from it: "Segment" for the
+-- neutrophil percentage, "Platelets" where the config says "Platelet Count
+-- (PLT)", "CRE", "UA", "Glucose AC", "血球比容值測定" for hematocrit. Every
+-- hospital has a few. A curated list per test, editable in the Envars tab the
+-- moment staff see a spelling in the scan's unmatched list, is the fix; no
+-- deploy per hospital.
+--
+-- **TEXT, comma-separated, rather than TEXT[].** The Envars editor and the
+-- admin API's vocabulary handler are generic over string columns — one
+-- editor serves all four vocabularies, and `units` already rides through it
+-- as a plain string. An array column would need its own input, its own
+-- binding and its own validation for one field on one vocabulary. The app
+-- splits on commas (ASCII or full-width) and newlines, trims, and drops
+-- blanks; the matcher treats each piece exactly as it treats the two names.
+--
+-- **No values seeded here.** The list is content, so it is reviewed before it
+-- lands — the same call migration 018 made for the Chinese names.
+
+ALTER TABLE test_config ADD COLUMN IF NOT EXISTS aliases TEXT;

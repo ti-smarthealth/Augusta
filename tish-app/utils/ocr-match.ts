@@ -32,6 +32,18 @@ export interface ScanField {
   display_name_zh_hant?: string | null;
   /** The flat name the server resolved; a third alias when present. */
   display_name?: string | null;
+  /**
+   * Migration 019: the names hospitals print for this test, comma-separated
+   * as staff typed them in the Envars tab ("Segment, Neut, 嗜中性球"). Split
+   * here; each piece is matched exactly as the two names are.
+   */
+  aliases?: string | null;
+}
+
+/** The pieces of an `aliases` string: split on commas (either width) or newlines, trimmed, blanks dropped. */
+export function splitAliases(aliases: string | null | undefined): string[] {
+  if (typeof aliases !== 'string') return [];
+  return aliases.split(/[,，;；\n]/).map((s) => s.trim()).filter((s) => s !== '');
 }
 
 export interface ScanMatch {
@@ -181,7 +193,7 @@ export function valueBeforeName(textBefore: string): string | null {
 }
 
 function namesOf(field: ScanField): string[] {
-  const raw = [field.display_name_en, field.display_name_zh_hant, field.display_name];
+  const raw = [field.display_name_en, field.display_name_zh_hant, field.display_name, ...splitAliases(field.aliases)];
   const seen = new Set<string>();
   const out: string[] = [];
   for (const n of raw) {

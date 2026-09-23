@@ -196,3 +196,24 @@ test('the absolute count is not read as the percentage it is named after', () =>
   assert.equal(exact.values.field_11?.value, '4224');
   assert.equal(exact.values.field_10, undefined);
 });
+
+// Migration 019: staff-curated aliases ride in as comma-separated text and
+// match exactly as the two names do.
+import { splitAliases } from './ocr-match.ts';
+
+test('splitAliases takes either comma, semicolons or newlines and drops blanks', () => {
+  assert.deepEqual(splitAliases('Segment, Neut，嗜中性球;  ,\nSeg.'), ['Segment', 'Neut', '嗜中性球', 'Seg.']);
+  assert.deepEqual(splitAliases(null), []);
+  assert.deepEqual(splitAliases('   '), []);
+});
+
+test('a configured alias matches a printed name the long form does not contain', () => {
+  const fields = [
+    { field_number: 10, display_name_en: 'Neutrophils', display_name_zh_hant: '嗜中性白血球', aliases: 'Segment, Neut' },
+    { field_number: 5, display_name_en: 'Platelet Count (PLT)', display_name_zh_hant: '血小板計數', aliases: null },
+  ];
+  const fill = matchRows(rows('Segment 80.0 % 42-74', 'Platelets 376 1000/uL'), fields);
+  assert.equal(fill.values.field_10?.value, '80.0');
+  assert.equal(fill.values.field_10?.name, 'Segment');
+  assert.equal(fill.values.field_5, undefined, 'no alias yet, so "Platelets" still does not match');
+});

@@ -57,6 +57,8 @@ export interface VocabularyEntry {
   default_dosage?: string
   /** Lab tests only, and optional even there — a ratio has no units. */
   units?: string | null
+  /** Lab tests only: comma-separated names hospitals print, for the scan matcher. */
+  aliases?: string | null
 }
 
 export interface VocabularyListResponse {
@@ -69,6 +71,7 @@ export interface SaveVocabularyEntryRequest {
   name_zh_hant: string | null
   default_dosage?: string
   units?: string
+  aliases?: string
 }
 
 export interface AnnouncementType {

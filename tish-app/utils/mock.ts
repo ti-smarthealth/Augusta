@@ -84,8 +84,8 @@ const medicationDoses = [
 // left without Chinese, because falling back to English is the state the
 // screens have to handle and the mock is the only place it can be seen offline.
 const testConfig = [
-  { field_number: 1, display_name: 'Fasting glucose', display_name_en: 'Fasting glucose', display_name_zh_hant: '空腹血糖', units: 'mmol/L' },
-  { field_number: 2, display_name: 'HbA1c', display_name_en: 'HbA1c', display_name_zh_hant: '糖化血色素', units: '%' },
+  { field_number: 1, display_name: 'Fasting glucose', display_name_en: 'Fasting glucose', display_name_zh_hant: '空腹血糖', units: 'mmol/L', aliases: null },
+  { field_number: 2, display_name: 'HbA1c', display_name_en: 'HbA1c', display_name_zh_hant: '糖化血色素', units: '%', aliases: 'A1C, 醣化血色素' },
   { field_number: 3, display_name: 'Total cholesterol', display_name_en: 'Total cholesterol', display_name_zh_hant: '總膽固醇', units: 'mmol/L' },
   { field_number: 4, display_name: 'Systolic BP', display_name_en: 'Systolic BP', display_name_zh_hant: null, units: 'mmHg' },
 ];

@@ -179,13 +179,18 @@ export const VOCABULARIES = {
    *
    * `units` is optional: most assays have one, a ratio or a blood group does
    * not, and requiring it would force staff to invent one.
+   *
+   * `aliases` (migration 019) is the comma-separated list of names a hospital
+   * prints for the test, read by the app's report-scan matcher. Plain text
+   * rather than an array precisely so it rides through this generic handler
+   * like `units` does.
    */
   tests: {
     table: 'test_config',
     key: 'field_number',
     nameEn: 'display_name_en',
     nameZh: 'display_name_zh_hant',
-    columns: [{ name: 'units', required: false }],
+    columns: [{ name: 'units', required: false }, { name: 'aliases', required: false }],
     order: 'field_number ASC',
     slots: 30,
     readings: { table: 'test_results', columnPrefix: 'field_' },

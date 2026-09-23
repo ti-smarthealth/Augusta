@@ -1147,7 +1147,9 @@ test('A NEW TEST TAKES THE LOWEST FREE SLOT, AND THE CLIENT CANNOT CHOOSE IT', a
   assert.match(text, /generate_series\(1, 30\)/);
   assert.match(text, /NOT EXISTS/);
   assert.match(text, /ORDER BY n/);
-  assert.deepEqual(params, ['HbA1c', null, '%'], 'only the name pair and units are bound');
+  // Migration 019 added `aliases` as a fourth bound value; the slot is still
+  // not among them.
+  assert.deepEqual(params, ['HbA1c', null, '%', null], 'only the name pair, units and aliases are bound');
 });
 
 test('with all thirty slots taken, adding a test is a 409 rather than a silent no-op', async () => {
@@ -1196,11 +1198,12 @@ test('EDITING A TEST CANNOT MOVE IT TO ANOTHER SLOT', async () => {
     body: { name_en: 'HbA1c', name_zh_hant: '糖化血色素', units: '%', field_number: 9 },
   }));
   assert.equal(res.statusCode, 200);
-  // Only the SET list, so the `WHERE field_number = $4` that addresses the row
+  // Only the SET list, so the `WHERE field_number = $5` that addresses the row
   // does not satisfy an assertion about what the row is allowed to change to.
+  // ($5 since migration 019 added `aliases` to the SET list.)
   const setClause = text.slice(text.indexOf('SET'), text.indexOf('WHERE'));
   assert.doesNotMatch(setClause, /field_number/, 'the slot must never be assignable');
-  assert.match(text, /WHERE field_number = \$4/);
+  assert.match(text, /WHERE field_number = \$5/);
 });
 
 test('DELETING A TEST THAT STILL HAS READINGS FAILS LOUDLY', async () => {

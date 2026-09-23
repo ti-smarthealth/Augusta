@@ -35,17 +35,18 @@ import type { SaveVocabularyEntryRequest, VocabularyEntry, VocabularySlug } from
  */
 
 /**
- * The one column a vocabulary may carry beyond the name pair. Two of the four
- * have one, and describing it here rather than branching on the slug is what
- * keeps a single editor serving all of them.
+ * The columns a vocabulary may carry beyond the name pair. Describing them
+ * here rather than branching on the slug is what keeps a single editor
+ * serving all of them. Medications carry one; tests carry two since
+ * migration 019 added aliases.
  */
-type ExtraColumn = { key: "default_dosage" | "units"; label: string; placeholder: string }
+type ExtraColumn = { key: "default_dosage" | "units" | "aliases"; label: string; placeholder: string; hint?: string }
 
 const TABS: {
   slug: VocabularySlug
   label: string
   blurb: string
-  extra?: ExtraColumn
+  extras?: ExtraColumn[]
   /** `tests` alone is keyed by something worth reading; see its blurb. */
   showSlot?: boolean
 }[] = [
@@ -55,7 +56,7 @@ const TABS: {
     slug: "medications",
     label: "Medication library",
     blurb: "Shown wherever a reminder names its medicine, including the alarm itself.",
-    extra: { key: "default_dosage", label: "Dosages", placeholder: "e.g. 200mg, 500mg" },
+    extras: [{ key: "default_dosage", label: "Dosages", placeholder: "e.g. 200mg, 500mg" }],
   },
   {
     slug: "tests",
@@ -68,7 +69,17 @@ const TABS: {
       "Named on the results dashboard — under the chart, on the quick-stat cards and beside every reading. " +
       "The field number is the column each test's readings are stored in: it is assigned when you add the test and fixed afterwards, " +
       "and a test with readings has to be renamed rather than deleted.",
-    extra: { key: "units", label: "Units", placeholder: "e.g. mmol/L (optional)" },
+    extras: [
+      { key: "units", label: "Units", placeholder: "e.g. mmol/L (optional)" },
+      // What the scan matcher reads. A spelling seen in a scan's "didn't match
+      // a field" list belongs here, and takes effect on the next scan.
+      {
+        key: "aliases",
+        label: "Also printed as",
+        placeholder: "e.g. Segment, Neut, 嗜中性球",
+        hint: "Names hospitals print for this test, comma-separated. Report scanning matches these as well as the two names.",
+      },
+    ],
     showSlot: true,
   },
 ]
@@ -105,7 +116,7 @@ export function EnvarsPage() {
         slug={active}
         label={tab.label}
         blurb={tab.blurb}
-        extra={tab.extra}
+        extras={tab.extras ?? []}
         showSlot={!!tab.showSlot}
       />
     </div>
@@ -113,8 +124,8 @@ export function EnvarsPage() {
 }
 
 function EnvarEditor({
-  slug, label, blurb, extra, showSlot,
-}: { slug: VocabularySlug; label: string; blurb: string; extra?: ExtraColumn; showSlot: boolean }) {
+  slug, label, blurb, extras, showSlot,
+}: { slug: VocabularySlug; label: string; blurb: string; extras: ExtraColumn[]; showSlot: boolean }) {
   const api = useApi()
   const qc = useQueryClient()
   const query = useQuery({ queryKey: ["vocabulary", slug], queryFn: () => api.listVocabulary(slug) })
@@ -157,14 +168,14 @@ function EnvarEditor({
     setDraft({
       name_en: entry.name_en,
       name_zh_hant: entry.name_zh_hant,
-      ...(extra ? { [extra.key]: entry[extra.key] ?? "" } : {}),
+      ...Object.fromEntries(extras.map((x) => [x.key, entry[x.key] ?? ""])),
     })
   }
 
   const startNew = () => {
     setError(null)
     setEditing("new")
-    setDraft({ name_en: "", name_zh_hant: null, ...(extra ? { [extra.key]: "" } : {}) })
+    setDraft({ name_en: "", name_zh_hant: null, ...Object.fromEntries(extras.map((x) => [x.key, ""])) })
   }
 
   return (
@@ -198,7 +209,7 @@ function EnvarEditor({
                 {showSlot ? <TableHead className="w-[70px]">Field</TableHead> : null}
                 <TableHead>English</TableHead>
                 <TableHead>繁體中文</TableHead>
-                {extra ? <TableHead>{extra.label}</TableHead> : null}
+                {extras.map((x) => <TableHead key={x.key}>{x.label}</TableHead>)}
                 <TableHead className="w-[130px] text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -209,7 +220,7 @@ function EnvarEditor({
                     key={entry.id}
                     draft={draft}
                     setDraft={setDraft}
-                    extra={extra}
+                    extras={extras}
                     showSlot={showSlot}
                     slot={entry.id}
                     busy={save.isPending}
@@ -231,7 +242,7 @@ function EnvarEditor({
                         <span className="text-muted-foreground">— not translated</span>
                       )}
                     </TableCell>
-                    {extra ? <TableCell className="text-muted-foreground">{entry[extra.key]}</TableCell> : null}
+                    {extras.map((x) => <TableCell key={x.key} className="text-muted-foreground">{entry[x.key]}</TableCell>)}
                     <TableCell className="text-right">
                       <Button variant="ghost" size="sm" onClick={() => startEdit(entry)} aria-label={`Edit ${entry.name_en}`}>
                         <Pencil className="h-4 w-4" />
@@ -254,7 +265,7 @@ function EnvarEditor({
                 <EditRow
                   draft={draft}
                   setDraft={setDraft}
-                  extra={extra}
+                  extras={extras}
                   showSlot={showSlot}
                   // Nothing to show yet: the server picks the lowest free slot
                   // when the row is inserted, and guessing it here would be a
@@ -281,11 +292,11 @@ function EnvarEditor({
 }
 
 function EditRow({
-  draft, setDraft, extra, showSlot, slot, busy, onSave, onCancel,
+  draft, setDraft, extras, showSlot, slot, busy, onSave, onCancel,
 }: {
   draft: SaveVocabularyEntryRequest
   setDraft: (d: SaveVocabularyEntryRequest) => void
-  extra?: ExtraColumn
+  extras: ExtraColumn[]
   showSlot: boolean
   /** null while adding: the server picks the slot, so the editor cannot show one yet. */
   slot: number | null
@@ -319,17 +330,18 @@ function EditRow({
           onChange={(e) => setDraft({ ...draft, name_zh_hant: e.target.value || null })}
         />
       </TableCell>
-      {extra ? (
-        <TableCell>
-          <Label className="sr-only" htmlFor={extra.key}>{extra.label}</Label>
+      {extras.map((x) => (
+        <TableCell key={x.key}>
+          <Label className="sr-only" htmlFor={x.key}>{x.label}</Label>
           <Input
-            id={extra.key}
-            value={draft[extra.key] ?? ""}
-            placeholder={extra.placeholder}
-            onChange={(e) => setDraft({ ...draft, [extra.key]: e.target.value })}
+            id={x.key}
+            value={draft[x.key] ?? ""}
+            placeholder={x.placeholder}
+            title={x.hint}
+            onChange={(e) => setDraft({ ...draft, [x.key]: e.target.value })}
           />
         </TableCell>
-      ) : null}
+      ))}
       <TableCell className="text-right">
         <Button size="sm" disabled={busy || !draft.name_en.trim()} onClick={onSave} aria-label="Save entry">
           <Check className="h-4 w-4" />
