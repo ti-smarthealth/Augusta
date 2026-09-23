@@ -56,6 +56,13 @@ export function _setPresignerForTests(fn) { presign = fn ?? defaultPresign; }
 export const OCR_URL_TTL_SECONDS = 900;
 
 /**
+ * How many `field_N` columns `test_results` has (migration 020). The admin
+ * API carries the same number as `slots` on the tests vocabulary; the two
+ * must agree or a test can be created that no result can store.
+ */
+export const TEST_RESULT_SLOTS = 99;
+
+/**
  * The schema as one entry per table, **ordered so a table only ever references
  * tables defined before it.**
  *
@@ -349,6 +356,7 @@ const TABLE_DEFINITIONS = [
     // Migration 019 mirrored: `aliases` is comma-separated TEXT — the names a
     // hospital prints for the test, read by the report-scan matcher.
     { name: 'test_config', create: `CREATE TABLE test_config (field_number INTEGER PRIMARY KEY, display_name_en TEXT NOT NULL, display_name_zh_hant TEXT, units TEXT, description TEXT, aliases TEXT);` },
+    // Migration 020 mirrored: 99 slots, not 30. Still a cap — see the migration.
     { name: 'test_results', create: `CREATE TABLE test_results (
         id SERIAL PRIMARY KEY,
         user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
@@ -358,7 +366,21 @@ const TABLE_DEFINITIONS = [
         field_11 NUMERIC, field_12 NUMERIC, field_13 NUMERIC, field_14 NUMERIC, field_15 NUMERIC,
         field_16 NUMERIC, field_17 NUMERIC, field_18 NUMERIC, field_19 NUMERIC, field_20 NUMERIC,
         field_21 NUMERIC, field_22 NUMERIC, field_23 NUMERIC, field_24 NUMERIC, field_25 NUMERIC,
-        field_26 NUMERIC, field_27 NUMERIC, field_28 NUMERIC, field_29 NUMERIC, field_30 NUMERIC
+        field_26 NUMERIC, field_27 NUMERIC, field_28 NUMERIC, field_29 NUMERIC, field_30 NUMERIC,
+        field_31 NUMERIC, field_32 NUMERIC, field_33 NUMERIC, field_34 NUMERIC, field_35 NUMERIC,
+        field_36 NUMERIC, field_37 NUMERIC, field_38 NUMERIC, field_39 NUMERIC, field_40 NUMERIC,
+        field_41 NUMERIC, field_42 NUMERIC, field_43 NUMERIC, field_44 NUMERIC, field_45 NUMERIC,
+        field_46 NUMERIC, field_47 NUMERIC, field_48 NUMERIC, field_49 NUMERIC, field_50 NUMERIC,
+        field_51 NUMERIC, field_52 NUMERIC, field_53 NUMERIC, field_54 NUMERIC, field_55 NUMERIC,
+        field_56 NUMERIC, field_57 NUMERIC, field_58 NUMERIC, field_59 NUMERIC, field_60 NUMERIC,
+        field_61 NUMERIC, field_62 NUMERIC, field_63 NUMERIC, field_64 NUMERIC, field_65 NUMERIC,
+        field_66 NUMERIC, field_67 NUMERIC, field_68 NUMERIC, field_69 NUMERIC, field_70 NUMERIC,
+        field_71 NUMERIC, field_72 NUMERIC, field_73 NUMERIC, field_74 NUMERIC, field_75 NUMERIC,
+        field_76 NUMERIC, field_77 NUMERIC, field_78 NUMERIC, field_79 NUMERIC, field_80 NUMERIC,
+        field_81 NUMERIC, field_82 NUMERIC, field_83 NUMERIC, field_84 NUMERIC, field_85 NUMERIC,
+        field_86 NUMERIC, field_87 NUMERIC, field_88 NUMERIC, field_89 NUMERIC, field_90 NUMERIC,
+        field_91 NUMERIC, field_92 NUMERIC, field_93 NUMERIC, field_94 NUMERIC, field_95 NUMERIC,
+        field_96 NUMERIC, field_97 NUMERIC, field_98 NUMERIC, field_99 NUMERIC
     );` },
     // 2.5 / 5.8 (D-5) — one row per device belonging to whoever is signed in.
     // Deliberately *not* caregiver-specific: D-5 puts push on the critical path
@@ -2479,7 +2501,7 @@ export const handler = async (event) => {
                 const addCol = (n, v) => { cols.push(isPut ? `${n} = $${vals.length + 1}` : n); vals.push(v); };
                 if (!isPut) addCol('user_id', targetId);
                 if (payload.test_date) addCol('test_date', payload.test_date);
-                for (let i = 1; i <= 30; i++) { if (payload[`field_${i}`] !== undefined) addCol(`field_${i}`, payload[`field_${i}`] === "" ? null : payload[`field_${i}`]); }
+                for (let i = 1; i <= TEST_RESULT_SLOTS; i++) { if (payload[`field_${i}`] !== undefined) addCol(`field_${i}`, payload[`field_${i}`] === "" ? null : payload[`field_${i}`]); }
                 const query = isPut ? `UPDATE test_results SET ${cols.join(', ')} WHERE id = $1 AND user_id = ${targetId} RETURNING *` : `INSERT INTO test_results (${cols.join(',')}) VALUES (${cols.map((_, i) => `$${i + 1}`).join(',')}) RETURNING *`;
                 const saved = (await pool.query(query, vals)).rows[0];
                 if (isPut && !saved) { fail('TEST_RESULT_NOT_FOUND'); }

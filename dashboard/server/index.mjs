@@ -164,8 +164,9 @@ export const VOCABULARIES = {
    * Lab test names (migration 018) — the fourth vocabulary, and the only one
    * that is not shaped like the other three.
    *
-   * **`field_number` is a slot, not a surrogate id.** `test_results` has thirty
-   * fixed columns, `field_1` … `field_30`, and a `test_config` row is what says
+   * **`field_number` is a slot, not a surrogate id.** `test_results` has
+   * ninety-nine fixed columns (migration 020; thirty before it), `field_1` …
+   * `field_99`, and a `test_config` row is what says
    * what one of them means. Three consequences the handler has to honour:
    *
    * - it is chosen at insert rather than generated, so a new test takes the
@@ -192,7 +193,8 @@ export const VOCABULARIES = {
     nameZh: 'display_name_zh_hant',
     columns: [{ name: 'units', required: false }, { name: 'aliases', required: false }],
     order: 'field_number ASC',
-    slots: 30,
+    // Must equal TEST_RESULT_SLOTS in the app backend, i.e. the columns that exist.
+    slots: 99,
     readings: { table: 'test_results', columnPrefix: 'field_' },
     inUseMessage: 'That test still has readings recorded against it.',
   },

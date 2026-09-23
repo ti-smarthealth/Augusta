@@ -1144,7 +1144,8 @@ test('A NEW TEST TAKES THE LOWEST FREE SLOT, AND THE CLIENT CANNOT CHOOSE IT', a
   }));
   assert.equal(res.statusCode, 201);
   assert.equal(parse(res).entry.id, 4);
-  assert.match(text, /generate_series\(1, 30\)/);
+  // 99 since migration 020; the pool is exactly the columns test_results has.
+  assert.match(text, /generate_series\(1, 99\)/);
   assert.match(text, /NOT EXISTS/);
   assert.match(text, /ORDER BY n/);
   // Migration 019 added `aliases` as a fourth bound value; the slot is still
@@ -1152,7 +1153,7 @@ test('A NEW TEST TAKES THE LOWEST FREE SLOT, AND THE CLIENT CANNOT CHOOSE IT', a
   assert.deepEqual(params, ['HbA1c', null, '%', null], 'only the name pair, units and aliases are bound');
 });
 
-test('with all thirty slots taken, adding a test is a 409 rather than a silent no-op', async () => {
+test('with every slot taken, adding a test is a 409 rather than a silent no-op', async () => {
   // The insert selects from the *free* slots, so a full table inserts nothing
   // and still succeeds. Reporting that as a 201 would leave the editor showing
   // an entry the database does not have.
