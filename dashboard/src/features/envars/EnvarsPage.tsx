@@ -75,7 +75,7 @@ const TABS: {
       // a field" list belongs here, and takes effect on the next scan.
       {
         key: "aliases",
-        label: "Also printed as",
+        label: "Alias",
         placeholder: "e.g. Segment, Neut, 嗜中性球",
         hint: "Names hospitals print for this test, comma-separated. Report scanning matches these as well as the two names.",
       },
